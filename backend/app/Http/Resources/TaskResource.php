@@ -13,18 +13,18 @@ class TaskResource extends JsonResource
             'id'           => $this->id,
             'title'        => $this->title,
             'description'  => $this->description,
-            'due_date'     => $this->due_date,
-            'priority'     => $this->priority,
-            'weight_score' => $this->weight_score,
+            'due_date'     => $this->deadline ?? $this->due_date,
+            'priority'     => $this->priority ?? 'High',
+            'weight_score' => $this->weight ?? $this->weight_score,
             'status'       => $this->status,
-            'assigned_by'  => $this->assigned_by,
-            'employee'     => [
-                'id'        => $this->employee->id ?? null,
-                'full_name' => $this->employee->full_name ?? null,
-                'position'  => $this->employee->position ?? null,
-            ],
+            'assigned_by'  => $this->created_by_manager_id ?? $this->assigned_by,
+            'employee'     => $this->employee ? [
+                'id'        => $this->employee->id,
+                'full_name' => $this->employee->full_name,
+                'position'  => $this->employee->position,
+            ] : null,
             'submissions'  => $this->submissions,
-            'created_at'   => $this->created_at ? $this->created_at->toDateTimeString() : null,
+            'created_at'   => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
         ];
     }
 }

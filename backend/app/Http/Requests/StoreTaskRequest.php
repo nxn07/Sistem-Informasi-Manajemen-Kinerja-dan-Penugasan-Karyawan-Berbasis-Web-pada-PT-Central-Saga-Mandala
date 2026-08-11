@@ -12,14 +12,15 @@ class StoreTaskRequest extends FormRequest
     }
 
     public function rules(): array
-    {
-        return [
-            'employee_id'  => 'required|exists:employees,id',
-            'title'        => 'required|string|max:255',
-            'description'  => 'required|string',
-            'due_date'     => 'required|date|after:now',
-            'priority'     => 'required|in:Low,Medium,High,Urgent',
-            'weight_score' => 'required|integer|min:1|max:100',
-        ];
-    }
+{
+    return [
+        'employee_id'          => 'nullable|integer|exists:employees,id',
+        'assigned_employee_id' => 'nullable|integer|exists:employees,id',
+        'title'                => 'required|string|max:255',
+        'description'          => 'required|string',
+        'due_date'             => 'required|date',
+        'priority'             => 'required|in:Low,Medium,High',
+        'weight_score'         => 'required|integer',
+    ];
+}
 }

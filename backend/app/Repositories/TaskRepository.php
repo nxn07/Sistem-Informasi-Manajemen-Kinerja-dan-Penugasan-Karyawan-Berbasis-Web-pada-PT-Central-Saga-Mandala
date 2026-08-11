@@ -16,10 +16,13 @@ class TaskRepository
 
     public function getByEmployeeId(int $employeeId): Collection
     {
-        return Task::where('employee_id', $employeeId)
-            ->with(['submissions'])
-            ->latest()
-            ->get();
+        return Task::where(function ($query) use ($employeeId) {
+            $query->where('employee_id', $employeeId)
+                  ->orWhere('assigned_employee_id', $employeeId);
+        })
+        ->with(['submissions'])
+        ->latest()
+        ->get();
     }
 
     public function create(array $data): Task
@@ -34,6 +37,9 @@ class TaskRepository
 
     public function updateStatus(Task $task, string $status): bool
     {
-        return $task->update(['status' => $status]);
+        // PENTING: Gunakan strtoupper untuk menyelaraskan dengan 'PENDING' pada Create Task
+        return $task->update([
+            'status' => strtoupper($status)
+        ]);
     }
 }

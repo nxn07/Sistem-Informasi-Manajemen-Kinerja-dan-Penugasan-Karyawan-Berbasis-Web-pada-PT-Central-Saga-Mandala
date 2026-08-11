@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+// 1. Import class HasApiTokens Sanctum di bagian atas
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Spatie\Permission\Traits\HasRoles; // 1. Tambahkan import ini
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles; // 2. Tambahkan HasRoles di sini
+    // 2. Tambahkan HasApiTokens di dalam trait class
+    use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
         'name',
