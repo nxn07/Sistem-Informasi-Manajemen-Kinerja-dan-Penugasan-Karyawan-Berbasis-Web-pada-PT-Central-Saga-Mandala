@@ -1,6 +1,6 @@
 FROM php:8.4-fpm-alpine
 
-# Install system dependencies & PostgreSQL driver
+# Install system dependencies & PostgreSQL driver + build tools untuk PECL
 RUN apk add --no-cache \
     git \
     curl \
@@ -9,10 +9,13 @@ RUN apk add --no-cache \
     zip \
     unzip \
     libpq-dev \
-    linux-headers
+    linux-headers \
+    $PHPIZE_DEPS
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql pgsql bcmath
+# Install PHP extensions & Redis
+RUN docker-php-ext-install pdo pdo_pgsql pgsql bcmath \
+    && pecl install redis \
+    && docker-php-ext-enable redis
 
 # Install Composer
 COPY --from=docker.io/library/composer:latest /usr/bin/composer /usr/bin/composer
@@ -21,7 +24,7 @@ WORKDIR /var/www
 
 COPY . .
 
-# Install dependencies laravel dengan mengabaikan pengecekan ketat platform
+# Install dependencies laravel
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs
 
 EXPOSE 8000

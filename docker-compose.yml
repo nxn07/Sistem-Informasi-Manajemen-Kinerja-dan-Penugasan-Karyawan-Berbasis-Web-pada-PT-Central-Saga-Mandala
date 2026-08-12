@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # 1. Database PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: simkap_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: sim_kinerja
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Redis Cache & Queue
+  redis:
+    image: redis:alpine
+    container_name: simkap_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # 3. Backend Laravel (API Server)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: simkap_backend
+    restart: always
+    ports:
+      - "0.0.0.0:8000:8000"
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: sim_kinerja
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgrespassword
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    volumes:
+      - ./backend:/var/www
+    depends_on:
+      - postgres
+      - redis
+
+  # 4. Queue Worker (Otomatis memproses antrean di background)
+  queue_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: simkap_queue_worker
+    restart: always
+    command: php artisan queue:work --tries=3 --timeout=90
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: sim_kinerja
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgrespassword
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    volumes:
+      - ./backend:/var/www
+    depends_on:
+      - backend
+      - redis
+      - postgres
+
+  # 5. Frontend Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: simkap_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
