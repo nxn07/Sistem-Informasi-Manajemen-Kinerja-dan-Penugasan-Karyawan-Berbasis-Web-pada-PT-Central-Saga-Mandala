@@ -11,8 +11,10 @@ use App\Repositories\TaskRepository;
 use App\Services\TaskService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
-class TaskController extends Controller
+class TaskController extends Controller implements HasMiddleware
 {
     protected TaskRepository $taskRepository;
     protected TaskService $taskService;
@@ -21,11 +23,18 @@ class TaskController extends Controller
     {
         $this->taskRepository = $taskRepository;
         $this->taskService = $taskService;
+    }
 
-        // Proteksi Otorisasi Permission (Hapus 'index' dari can:tasks.view_all)
-        $this->middleware('can:tasks.create')->only(['store']);
-        $this->middleware('can:tasks.submit')->only(['submit']);
-        $this->middleware('can:tasks.review')->only(['review']);
+    /**
+     * Pendaftaran Middleware Standar Laravel 11
+     */
+    public static function middleware(): array
+    {
+        return [
+            (new Middleware('can:tasks.create'))->only(['store']),
+            (new Middleware('can:tasks.submit'))->only(['submit']),
+            (new Middleware('can:tasks.review'))->only(['review']),
+        ];
     }
 
     public function index(Request $request): JsonResponse
