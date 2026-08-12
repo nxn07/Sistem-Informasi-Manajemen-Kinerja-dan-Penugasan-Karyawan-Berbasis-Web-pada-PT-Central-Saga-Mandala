@@ -21,6 +21,11 @@ class TaskController extends Controller
     {
         $this->taskRepository = $taskRepository;
         $this->taskService = $taskService;
+
+        // Proteksi Otorisasi Permission (Hapus 'index' dari can:tasks.view_all)
+        $this->middleware('can:tasks.create')->only(['store']);
+        $this->middleware('can:tasks.submit')->only(['submit']);
+        $this->middleware('can:tasks.review')->only(['review']);
     }
 
     public function index(Request $request): JsonResponse
@@ -33,6 +38,7 @@ class TaskController extends Controller
             $divisionId = $user->employee->division_id ?? 0;
             $tasks = $this->taskRepository->getAllByDivision($divisionId);
         } else {
+            // Employee dapat melihat tugas yang di-assign ke dirinya sendiri
             $employeeId = $user->employee->id ?? 0;
             $tasks = $this->taskRepository->getByEmployeeId($employeeId);
         }
