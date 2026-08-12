@@ -27,4 +27,14 @@ class TaskSubmission extends Model
     {
         return $this->belongsTo(Task::class);
     }
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }
