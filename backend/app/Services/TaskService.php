@@ -2,22 +2,60 @@
 
 namespace App\Services;
 
-use App\Repositories\TaskRepository;
+use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskServiceInterface;
 use App\Models\Task;
 use App\Models\TaskSubmission;
 use App\Models\Employee;
 use App\Notifications\TaskAssignedNotification;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
-class TaskService
+class TaskService implements TaskServiceInterface
 {
-    protected TaskRepository $taskRepository;
+    /**
+     * @var TaskRepositoryInterface
+     */
+    protected TaskRepositoryInterface $taskRepository;
 
-    public function __construct(TaskRepository $taskRepository)
+    public function __construct(TaskRepositoryInterface $taskRepository)
     {
         $this->taskRepository = $taskRepository;
     }
+
+    // ==========================================
+    // METHOD STANDAR INTERFACE
+    // ==========================================
+
+    public function getAllTasks()
+    {
+        return $this->taskRepository->getAll();
+    }
+
+    public function getTaskById(int $id)
+    {
+        return $this->taskRepository->findById($id);
+    }
+
+    public function createTask(array $data)
+    {
+        return $this->taskRepository->create($data);
+    }
+
+    public function updateTask(int $id, array $data)
+    {
+        return $this->taskRepository->update($id, $data);
+    }
+
+    public function deleteTask(int $id)
+    {
+        return $this->taskRepository->delete($id);
+    }
+
+    // ==========================================
+    // BISNIS LOGIKA KHUSUS (TASK MANAGEMENT)
+    // ==========================================
 
     public function assignTask(array $data, int $assignedByUserId): Task
     {
@@ -39,7 +77,7 @@ class TaskService
             $data['weight'] = $data['weight_score'];
         }
 
-        // PERBAIKAN: Harus HURUF KAPITAL ('PENDING') sesuai Check Constraint PostgreSQL
+        // Status HURUF KAPITAL ('PENDING') sesuai Check Constraint PostgreSQL
         $data['status'] = 'PENDING';
 
         // Simpan tugas ke database via repository
@@ -68,25 +106,25 @@ class TaskService
             if ($isLate) {
                 $currentWeight = $task->weight ?? $task->weight_score ?? 0;
                 $penaltyWeight = max(0, $currentWeight * 0.9);
-                
+
                 $updateData = [];
                 if (isset($task->weight)) $updateData['weight'] = $penaltyWeight;
                 if (isset($task->weight_score)) $updateData['weight_score'] = $penaltyWeight;
-                
+
                 if (!empty($updateData)) {
                     $task->update($updateData);
                 }
             }
 
-            // Ambil employee_id secara aman dari task atau user login
-            $user = auth()->user();
-            $employeeId = $submissionData['employee_id'] 
-                ?? $task->assigned_employee_id 
-                ?? $task->employee_id 
-                ?? ($user && method_exists($user, 'employee') && $user->employee ? $user->employee->id : null) 
-                ?? auth()->id();
+            // Menggunakan Facade Auth secara eksplisit
+            $user = Auth::user();
+            $employeeId = $submissionData['employee_id']
+                ?? $task->assigned_employee_id
+                ?? $task->employee_id
+                ?? ($user && method_exists($user, 'employee') && $user->employee ? $user->employee->id : null)
+                ?? Auth::id();
 
-            // Tangani lokasi file (file_path / submission_file)
+            // Tangani lokasi file
             $filePath = $submissionData['file_path'] ?? $submissionData['submission_file'] ?? $submissionData['file'] ?? null;
 
             // Payload lengkap untuk task_submissions
@@ -101,8 +139,8 @@ class TaskService
 
             $submission = $task->submissions()->create($payload);
 
-            // PERBAIKAN: Update status task menjadi 'SUBMITTED' (uppercase)
-            $this->taskRepository->updateStatus($task, 'SUBMITTED');
+            // Update status task menjadi 'SUBMITTED' (uppercase)
+            $this->taskRepository->update($task->id, ['status' => 'SUBMITTED']);
 
             return $submission;
         });
@@ -120,8 +158,9 @@ class TaskService
                 ]);
             }
 
-            // PERBAIKAN: Status dikonversi menjadi UPPERCASE (misal: 'COMPLETED')
-            return $this->taskRepository->updateStatus($task, strtoupper($status));
+            // Status dikonversi menjadi UPPERCASE (misal: 'COMPLETED')
+            $updatedTask = $this->taskRepository->update($task->id, ['status' => strtoupper($status)]);
+            return (bool) $updatedTask;
         });
     }
 }
