@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+
+// Spatie Media Library
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
+
+// Spatie Activitylog (v5 Namespace yang Benar)
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Task extends Model implements HasMedia
 {
@@ -24,7 +28,7 @@ class Task extends Model implements HasMedia
     ];
 
     /**
-     * Konfigurasi Spatie Activitylog (Audit Trail)
+     * Konfigurasi Spatie Activitylog
      */
     public function getActivitylogOptions(): LogOptions
     {
