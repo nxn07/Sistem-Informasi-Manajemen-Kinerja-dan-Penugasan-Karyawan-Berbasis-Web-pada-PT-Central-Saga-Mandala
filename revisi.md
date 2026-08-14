@@ -49,6 +49,16 @@
 ---
 
 ### 3. Controller, API Resources & Error Handling
+- [x] **API Resource per Model:**
+  - [x] `UserResource`
+  - [x] `EmployeeResource`
+  - [x] `DivisionResource`
+  - [x] `TaskResource`
+  - [x] `TaskSubmissionResource`
+  - [x] `PerformanceEvaluationResource`
+- [x] **Robust Error Handling:**
+  - [x] Tambahkan penanganan error (`try-catch` & Custom Exception Handling) di Controller/Service yang mengembalikan notifikasi/pesan error JSON yang jelas dan spesifik saat gagal.
+
 - [ ] **API Resource per Model:**
   - [ ] `UserResource`
   - [ ] `EmployeeResource`
@@ -62,23 +72,23 @@
 ---
 
 ### 4. Otorisasi (Policies & Spatie Permissions)
-- [ ] **Spatie Permission Enforcement:**
-  - [ ] Eksekusi dan terapkan Spatie Permission secara penuh di seluruh endpoint API.
-- [ ] **HTTP / Controller Policy:**
-  - [ ] Buat dan terapkan Laravel Policy di Layer HTTP/Controller untuk mengontrol hak akses (`view`, `create`, `update`, `delete`) pada setiap modul:
-    - [ ] `TaskPolicy`
-    - [ ] `EvaluationPolicy`
-    - [ ] `EmployeePolicy`
+- [x] **Spatie Permission Enforcement:**
+  - [x] Eksekusi dan terapkan Spatie Permission secara penuh di seluruh endpoint API.
+- [x] **HTTP / Controller Policy:**
+  - [x] Buat dan terapkan Laravel Policy di Layer HTTP/Controller untuk mengontrol hak akses (`view`, `create`, `update`, `delete`):
+    - [x] `TaskPolicy` (Handling Task & Task Submission)
+    - [x] `EmployeePolicy`
+    - [x] `EvaluationPolicy` (Handling Evaluation & KPI Criteria)
+    - [x] `UserPolicy`
+    - [x] `DivisionPolicy`
 
 ---
 
 ### 5. Integrasi Media Library & Activity Log (Spatie)
-- [ ] **Spatie Media Library Integration:**
-  - [ ] Terapkan Spatie Media Library (`HasMedia` & `InteractsWithMedia`) untuk pengelolaan file media pada:
-    - [ ] Modul Task / Task Submission
-    - [ ] Modul Evaluasi / Performance Evaluation
-- [ ] **Spatie Activitylog (Audit Trail):**
-  - [ ] Pasang Spatie Activitylog pada Model-Model utama untuk mencatat jejak digital setiap ada aktivitas tambah, ubah, atau hapus data.
+- [x] **Spatie Media Library Integration:**
+  - [x] Terapkan Spatie Media Library (`HasMedia` & `InteractsWithMedia`) pada Model utama.
+- [x] **Spatie Activitylog (Audit Trail):**
+  - [x] Pasang Spatie Activitylog pada Model-Model utama untuk mencatat jejak digital aktivitas data.
 
 ---
 

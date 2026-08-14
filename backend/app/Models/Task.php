@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
-class Task extends Model
+class Task extends Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, InteractsWithMedia, LogsActivity;
 
     protected $fillable = [
         'created_by_manager_id',
@@ -18,6 +22,17 @@ class Task extends Model
         'weight',
         'status',
     ];
+
+    /**
+     * Konfigurasi Spatie Activitylog (Audit Trail)
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['title', 'status', 'assigned_employee_id', 'deadline', 'weight'])
+            ->logOnlyDirty()
+            ->useLogName('task_activity');
+    }
 
     public function manager()
     {

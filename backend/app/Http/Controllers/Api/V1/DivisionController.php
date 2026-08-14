@@ -3,47 +3,99 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DivisionResource;
+use App\Models\Division;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 class DivisionController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): JsonResponse
     {
-        //
+        try {
+            $divisions = Division::all();
+            return response()->json([
+                'success' => true,
+                'message' => 'Daftar divisi berhasil diambil.',
+                'data'    => DivisionResource::collection($divisions),
+            ], 200);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data divisi: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+            ]);
+
+            $division = Division::create($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Divisi berhasil dibuat.',
+                'data'    => new DivisionResource($division),
+            ], 201);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat divisi: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function show(int $id): JsonResponse
     {
-        //
+        try {
+            $division = Division::findOrFail($id);
+            return response()->json([
+                'success' => true,
+                'message' => 'Detail divisi berhasil ditemukan.',
+                'data'    => new DivisionResource($division),
+            ], 200);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Divisi tidak ditemukan.'], 404);
+        }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function update(Request $request, int $id): JsonResponse
     {
-        //
+        try {
+            $division = Division::findOrFail($id);
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+            ]);
+
+            $division->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Divisi berhasil diperbarui.',
+                'data'    => new DivisionResource($division),
+            ], 200);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function destroy(int $id): JsonResponse
     {
-        //
+        try {
+            $division = Division::findOrFail($id);
+            $division->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Divisi berhasil dihapus.',
+            ], 200);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }
