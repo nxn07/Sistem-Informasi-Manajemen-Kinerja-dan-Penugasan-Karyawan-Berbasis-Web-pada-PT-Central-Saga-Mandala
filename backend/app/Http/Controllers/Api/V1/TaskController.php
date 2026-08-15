@@ -33,11 +33,7 @@ class TaskController extends Controller implements HasMiddleware
      */
     public static function middleware(): array
     {
-        return [
-            (new Middleware('can:tasks.create'))->only(['store']),
-            (new Middleware('can:tasks.submit'))->only(['submit']),
-            (new Middleware('can:tasks.review'))->only(['review']),
-        ];
+        return [];
     }
 
     /**
@@ -46,14 +42,7 @@ class TaskController extends Controller implements HasMiddleware
     public function index(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
-
-            if ($user && method_exists($user, 'hasRole') && $user->hasRole('admin')) {
-                $tasks = $this->taskService->getAllTasks();
-            } else {
-                // Diambil via Service Layer untuk menjaga isolasi
-                $tasks = $this->taskService->getAllTasks();
-            }
+            $tasks = $this->taskService->getAllTasks();
 
             return response()->json([
                 'success' => true,

@@ -11,11 +11,12 @@ class TaskPolicy
     use HandlesAuthorization;
 
     /**
-     * Buka akses penuh tanpa batas untuk Role Admin / Super Admin.
+     * Buka akses penuh tanpa batas untuk Role Admin.
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('admin')) {
+        // Mendukung ADMIN / admin maupun field $user->role
+        if ($user->hasRole(['ADMIN', 'admin']) || strtoupper($user->role ?? '') === 'ADMIN') {
             return true;
         }
 
@@ -27,7 +28,7 @@ class TaskPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('tasks.view');
+        return $user->hasRole(['ADMIN', 'MANAGER', 'KARYAWAN', 'admin', 'manager', 'karyawan']);
     }
 
     /**
@@ -35,19 +36,20 @@ class TaskPolicy
      */
     public function view(User $user, Task $task): bool
     {
-        if ($user->hasRole('manager')) {
-            return $user->employee && $user->employee->division_id === $task->division_id;
+        if ($user->hasRole(['MANAGER', 'manager']) || strtoupper($user->role ?? '') === 'MANAGER') {
+            return true;
         }
 
         return $user->employee && $user->employee->id === $task->assigned_employee_id;
     }
 
     /**
-     * Hak akses membuat tugas baru.
+     * Hak akses membuat tugas baru (Admin & Manager).
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('tasks.create');
+        return $user->hasRole(['ADMIN', 'MANAGER', 'admin', 'manager'])
+            || in_array(strtoupper($user->role ?? ''), ['ADMIN', 'MANAGER']);
     }
 
     /**
@@ -55,7 +57,8 @@ class TaskPolicy
      */
     public function update(User $user, Task $task): bool
     {
-        return $user->hasPermissionTo('tasks.edit');
+        return $user->hasRole(['ADMIN', 'MANAGER', 'admin', 'manager'])
+            || in_array(strtoupper($user->role ?? ''), ['ADMIN', 'MANAGER']);
     }
 
     /**
@@ -63,9 +66,7 @@ class TaskPolicy
      */
     public function submit(User $user, Task $task): bool
     {
-        return $user->hasPermissionTo('tasks.submit') &&
-            $user->employee &&
-            $user->employee->id === $task->assigned_employee_id;
+        return $user->employee && $user->employee->id === $task->assigned_employee_id;
     }
 
     /**
@@ -73,7 +74,8 @@ class TaskPolicy
      */
     public function review(User $user, Task $task): bool
     {
-        return $user->hasPermissionTo('tasks.review');
+        return $user->hasRole(['ADMIN', 'MANAGER', 'admin', 'manager'])
+            || in_array(strtoupper($user->role ?? ''), ['ADMIN', 'MANAGER']);
     }
 
     /**
@@ -81,6 +83,7 @@ class TaskPolicy
      */
     public function delete(User $user, Task $task): bool
     {
-        return $user->hasPermissionTo('tasks.delete');
+        return $user->hasRole(['ADMIN', 'MANAGER', 'admin', 'manager'])
+            || in_array(strtoupper($user->role ?? ''), ['ADMIN', 'MANAGER']);
     }
 }

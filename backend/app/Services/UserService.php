@@ -2,40 +2,97 @@
 
 namespace App\Services;
 
-use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Models\User;
 use App\Services\Contracts\UserServiceInterface;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class UserService implements UserServiceInterface
 {
-    protected $userRepository;
-
-    public function __construct(UserRepositoryInterface $userRepository)
+    public function getAllUsers(): Collection
     {
-        $this->userRepository = $userRepository;
+        return User::with('employee.division')->get();
     }
 
-    public function getAllUsers()
+    public function getUserById(int $id): User
     {
-        return $this->userRepository->getAll();
+        return User::with('employee.division')->findOrFail($id);
     }
 
-    public function getUserById(int $id)
+    public function createUser(array $data): User
     {
-        return $this->userRepository->findById($id);
+        return DB::transaction(function () use ($data) {
+            $userData = [
+                'username' => $data['username'] ?? $data['name'] ?? null,
+                'email'    => $data['email'],
+                'password' => Hash::make($data['password']),
+                'role'     => $data['role'] ?? 'KARYAWAN',
+            ];
+
+            $user = User::create($userData);
+
+            if (!empty($data['role'])) {
+                $user->assignRole($data['role']);
+            }
+
+            if (!empty($data['division_id'])) {
+                $nik = $data['nik'] ?? ('EMP-' . date('Ymd') . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT));
+                $fullName = $data['full_name'] ?? $data['name'] ?? $data['username'] ?? 'Pegawai Baru';
+
+                $user->employee()->create([
+                    'division_id' => $data['division_id'],
+                    'nik'         => $nik,
+                    'full_name'   => $fullName, // <-- Kolom yang benar
+                    'position'    => $data['position'] ?? 'Staff',
+                ]);
+            }
+
+            return $user->load('employee.division');
+        });
     }
 
-    public function createUser(array $data)
+    public function updateUser(int $id, array $data): User
     {
-        return $this->userRepository->create($data);
+        return DB::transaction(function () use ($id, $data) {
+            $user = User::findOrFail($id);
+
+            $updateData = [];
+            if (isset($data['username']) || isset($data['name'])) {
+                $updateData['username'] = $data['username'] ?? $data['name'];
+            }
+            if (isset($data['email'])) {
+                $updateData['email'] = $data['email'];
+            }
+            if (!empty($data['password'])) {
+                $updateData['password'] = Hash::make($data['password']);
+            }
+            if (isset($data['role'])) {
+                $updateData['role'] = $data['role'];
+                $user->syncRoles([$data['role']]);
+            }
+
+            $user->update($updateData);
+
+            if (isset($data['division_id']) || isset($data['nik']) || isset($data['position']) || isset($data['full_name']) || isset($data['name'])) {
+                $employeeData = [];
+                if (isset($data['division_id'])) $employeeData['division_id'] = $data['division_id'];
+                if (isset($data['nik'])) $employeeData['nik'] = $data['nik'];
+                if (isset($data['position'])) $employeeData['position'] = $data['position'];
+                if (isset($data['full_name']) || isset($data['name'])) {
+                    $employeeData['full_name'] = $data['full_name'] ?? $data['name'];
+                }
+
+                $user->employee()->updateOrCreate(['user_id' => $user->id], $employeeData);
+            }
+
+            return $user->load('employee.division');
+        });
     }
 
-    public function updateUser(int $id, array $data)
+    public function deleteUser(int $id): bool
     {
-        return $this->userRepository->update($id, $data);
-    }
-
-    public function deleteUser(int $id)
-    {
-        return $this->userRepository->delete($id);
+        $user = User::findOrFail($id);
+        return $user->delete();
     }
 }

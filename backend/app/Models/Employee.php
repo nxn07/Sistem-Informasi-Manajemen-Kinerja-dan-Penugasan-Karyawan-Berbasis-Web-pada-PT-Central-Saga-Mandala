@@ -14,8 +14,8 @@ class Employee extends Model
         'division_id',
         'nik',
         'full_name',
-        'phone',
         'position',
+        'phone',
     ];
 
     public function user()

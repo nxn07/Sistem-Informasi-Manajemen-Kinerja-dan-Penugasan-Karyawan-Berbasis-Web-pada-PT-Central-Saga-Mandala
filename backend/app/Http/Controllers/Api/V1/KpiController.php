@@ -30,12 +30,26 @@ class KpiController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            $validated = $request->validate([
-                'name'   => 'required|string|max:255',
-                'weight' => 'required|numeric',
-            ]);
+            $name = $request->input('criteria_name') ?? $request->input('name');
+            $weight = $request->input('weight_percentage') ?? $request->input('weight');
 
-            $kpi = KpiCriteria::create($validated);
+            if (!$name || $weight === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kolom criteria_name / name dan weight_percentage / weight wajib diisi.',
+                ], 422);
+            }
+
+            $payload = [
+                'criteria_name'     => $name,
+                'weight_percentage' => $weight,
+            ];
+
+            if ($request->has('description')) {
+                $payload['description'] = $request->input('description');
+            }
+
+            $kpi = KpiCriteria::create($payload);
 
             return response()->json([
                 'success' => true,
@@ -68,7 +82,19 @@ class KpiController extends Controller
     {
         try {
             $kpi = KpiCriteria::findOrFail($id);
-            $kpi->update($request->all());
+
+            $data = [];
+            if ($request->has('criteria_name') || $request->has('name')) {
+                $data['criteria_name'] = $request->input('criteria_name') ?? $request->input('name');
+            }
+            if ($request->has('weight_percentage') || $request->has('weight')) {
+                $data['weight_percentage'] = $request->input('weight_percentage') ?? $request->input('weight');
+            }
+            if ($request->has('description')) {
+                $data['description'] = $request->input('description');
+            }
+
+            $kpi->update($data);
 
             return response()->json([
                 'success' => true,

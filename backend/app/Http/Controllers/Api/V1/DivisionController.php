@@ -33,6 +33,7 @@ class DivisionController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
             ]);
 
             $division = Division::create($validated);
@@ -70,6 +71,7 @@ class DivisionController extends Controller
             $division = Division::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
             ]);
 
             $division->update($validated);

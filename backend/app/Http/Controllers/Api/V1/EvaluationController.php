@@ -39,7 +39,15 @@ class EvaluationController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            $evaluation = $this->evaluationService->createEvaluation($request->all());
+            $data = $request->all();
+
+            // Otomatis set evaluator_manager_id dari user login jika belum diisi di payload
+            if (!isset($data['evaluator_manager_id']) && $request->user()) {
+                $data['evaluator_manager_id'] = $request->user()->id;
+            }
+
+            $evaluation = $this->evaluationService->createEvaluation($data);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Evaluasi berhasil dibuat.',

@@ -10,10 +10,12 @@ class KpiCriteria extends Model
     use HasFactory;
 
     protected $table = 'kpi_criteria';
-    
+
     protected $fillable = [
-        'criteria_name', 
-        'weight_percentage', 
-        'description'
+        'criteria_name',
+        'weight_percentage',
+        'description',
+        'name',
+        'weight',
     ];
 }

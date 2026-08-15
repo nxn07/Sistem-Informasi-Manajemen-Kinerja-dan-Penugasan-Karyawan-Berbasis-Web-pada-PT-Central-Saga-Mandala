@@ -12,26 +12,38 @@ class PerformanceEvaluation extends Model
     protected $table = 'performance_evaluations';
 
     protected $fillable = [
-        'employee_id',
-        'evaluator_id',
         'task_id',
-        'period',
-        'final_score',
+        'employee_id',
+        'evaluator_manager_id',
+        'kpi_criteria_id',
+        'score',
+        'feedback',
         'notes',
+        'status',
     ];
+
+    public function task()
+    {
+        return $this->belongsTo(Task::class);
+    }
 
     public function employee()
     {
         return $this->belongsTo(Employee::class);
     }
 
-    public function evaluator()
+    public function evaluatorManager()
     {
-        return $this->belongsTo(User::class, 'evaluator_id');
+        return $this->belongsTo(User::class, 'evaluator_manager_id');
     }
 
-    public function task()
+    public function evaluator()
     {
-        return $this->belongsTo(Task::class);
+        return $this->belongsTo(User::class, 'evaluator_manager_id');
+    }
+
+    public function kpiCriteria()
+    {
+        return $this->belongsTo(KpiCriteria::class, 'kpi_criteria_id');
     }
 }

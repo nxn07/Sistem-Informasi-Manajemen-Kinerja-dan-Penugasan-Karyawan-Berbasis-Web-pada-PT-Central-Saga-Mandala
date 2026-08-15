@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
-// Spatie Activitylog (v5 Namespace yang Benar)
+// Spatie Activitylog
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -27,9 +27,14 @@ class Task extends Model implements HasMedia
         'status',
     ];
 
-    /**
-     * Konfigurasi Spatie Activitylog
-     */
+    protected function casts(): array
+    {
+        return [
+            'deadline' => 'datetime',
+            'weight'   => 'integer',
+        ];
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -44,6 +49,12 @@ class Task extends Model implements HasMedia
     }
 
     public function employee()
+    {
+        return $this->belongsTo(Employee::class, 'assigned_employee_id');
+    }
+
+    // Alias agar kompatibel dengan pemanggilan $task->assignedEmployee
+    public function assignedEmployee()
     {
         return $this->belongsTo(Employee::class, 'assigned_employee_id');
     }
