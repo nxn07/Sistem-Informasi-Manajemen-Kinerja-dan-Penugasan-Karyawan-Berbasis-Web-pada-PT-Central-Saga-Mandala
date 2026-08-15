@@ -17,9 +17,8 @@ class PerformanceEvaluation extends Model
         'evaluator_manager_id',
         'kpi_criteria_id',
         'score',
-        'feedback',
-        'notes',
-        'status',
+        'feedback_notes',
+        'evaluated_at',
     ];
 
     public function task()

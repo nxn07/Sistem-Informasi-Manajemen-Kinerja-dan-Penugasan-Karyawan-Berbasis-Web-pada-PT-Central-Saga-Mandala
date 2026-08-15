@@ -15,12 +15,12 @@ class TaskSubmission extends Model
         'task_id',
         'employee_id',
         'file_path',
-        'submission_file',
         'submission_link',
         'notes',
         'submitted_at',
-        'reviewed_by',
+        'reviewed_by_manager_id',
         'review_notes',
+        'status',
     ];
 
     public function task()
@@ -35,6 +35,6 @@ class TaskSubmission extends Model
 
     public function reviewer()
     {
-        return $this->belongsTo(User::class, 'reviewed_by');
+        return $this->belongsTo(User::class, 'reviewed_by_manager_id');
     }
 }

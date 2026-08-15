@@ -3,24 +3,19 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ReviewTaskRequest;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\SubmitTaskRequest;
-use App\Http\Requests\ReviewTaskRequest;
 use App\Http\Resources\TaskResource;
-use App\Http\Resources\TaskSubmissionResource;
+use App\Models\Task;
 use App\Services\Contracts\TaskServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controllers\HasMiddleware;
-use Illuminate\Routing\Controllers\Middleware;
 use Throwable;
 
-class TaskController extends Controller implements HasMiddleware
+class TaskController extends Controller
 {
-    /**
-     * @var TaskServiceInterface
-     */
     protected TaskServiceInterface $taskService;
 
     public function __construct(TaskServiceInterface $taskService)
@@ -28,63 +23,44 @@ class TaskController extends Controller implements HasMiddleware
         $this->taskService = $taskService;
     }
 
-    /**
-     * Pendaftaran Middleware Standar Laravel 11
-     */
-    public static function middleware(): array
-    {
-        return [];
-    }
-
-    /**
-     * Display a listing of the tasks.
-     */
     public function index(Request $request): JsonResponse
     {
         try {
-            $tasks = $this->taskService->getAllTasks();
+            $this->authorize('viewAny', Task::class);
 
+            $tasks = $this->taskService->getAllTasks();
             return response()->json([
                 'success' => true,
                 'message' => 'Daftar tugas berhasil diambil.',
                 'data'    => TaskResource::collection($tasks),
             ], 200);
         } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengambil data tugas: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Store a newly created task in storage.
-     */
     public function store(StoreTaskRequest $request): JsonResponse
     {
         try {
+            $this->authorize('create', Task::class);
+
             $task = $this->taskService->assignTask($request->validated(), $request->user()->id);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Tugas berhasil diberikan.',
+                'message' => 'Tugas berhasil dibuat dan ditugaskan.',
                 'data'    => new TaskResource($task),
             ], 201);
         } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal membuat tugas: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Display the specified task.
-     */
     public function show(int $id): JsonResponse
     {
         try {
             $task = $this->taskService->getTaskById($id);
+            $this->authorize('view', $task);
 
             return response()->json([
                 'success' => true,
@@ -92,81 +68,62 @@ class TaskController extends Controller implements HasMiddleware
                 'data'    => new TaskResource($task),
             ], 200);
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tugas tidak ditemukan.',
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat mengambil tugas: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Submit task by employee.
-     */
     public function submit(SubmitTaskRequest $request, int $id): JsonResponse
     {
         try {
             $task = $this->taskService->getTaskById($id);
-            $data = $request->validated();
+            $this->authorize('submit', $task);
+
+            $submissionData = $request->validated();
 
             if ($request->hasFile('file')) {
                 $path = $request->file('file')->store('submissions', 'public');
-                $data['file_path'] = $path;
+                $submissionData['file_path'] = $path;
+                $submissionData['submission_file'] = $path;
             }
 
-            $submission = $this->taskService->submitTask($task, $data);
+            $submission = $this->taskService->submitTask($task, $submissionData);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tugas berhasil dikumpulkan.',
-                'data'    => new TaskSubmissionResource($submission),
+                'data'    => $submission,
             ], 200);
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tugas tidak ditemukan.',
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengumpulkan tugas: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Review task submission by manager/admin.
-     */
     public function review(ReviewTaskRequest $request, int $id): JsonResponse
     {
         try {
             $task = $this->taskService->getTaskById($id);
+            $this->authorize('review', $task);
 
+            $data = $request->validated();
             $this->taskService->reviewTask(
                 $task,
-                $request->status,
-                $request->review_notes,
+                $data['status'],
+                $data['notes'] ?? $data['review_notes'] ?? null,
                 $request->user()->id
             );
 
             return response()->json([
                 'success' => true,
-                'message' => 'Review tugas berhasil disimpan.',
+                'message' => 'Status tugas berhasil diperbarui.',
             ], 200);
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tugas tidak ditemukan.',
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memproses review tugas: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

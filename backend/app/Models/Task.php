@@ -5,47 +5,35 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-// Spatie Media Library
-use Spatie\MediaLibrary\HasMedia;
-use Spatie\MediaLibrary\InteractsWithMedia;
-
-// Spatie Activitylog
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
-use Spatie\Activitylog\Support\LogOptions;
-
-class Task extends Model implements HasMedia
+class Task extends Model
 {
-    use HasFactory, InteractsWithMedia, LogsActivity;
+    use HasFactory;
+
+    protected $table = 'tasks';
 
     protected $fillable = [
-        'created_by_manager_id',
-        'assigned_employee_id',
         'title',
         'description',
-        'deadline',
         'weight',
+        'weight_score',
         'status',
+        'start_date',
+        'deadline',
+        'due_date',
+        'created_by_manager_id',
+        'assigned_employee_id',
+        'employee_id',
+        'division_id',
     ];
 
     protected function casts(): array
     {
         return [
-            'deadline' => 'datetime',
-            'weight'   => 'integer',
+            'start_date' => 'date',
+            'deadline'   => 'date',
+            'due_date'   => 'date',
+            'weight'     => 'float',
         ];
-    }
-
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly(['title', 'status', 'assigned_employee_id', 'deadline', 'weight'])
-            ->logOnlyDirty()
-            ->useLogName('task_activity');
-    }
-
-    public function manager()
-    {
-        return $this->belongsTo(Employee::class, 'created_by_manager_id');
     }
 
     public function employee()
@@ -53,10 +41,9 @@ class Task extends Model implements HasMedia
         return $this->belongsTo(Employee::class, 'assigned_employee_id');
     }
 
-    // Alias agar kompatibel dengan pemanggilan $task->assignedEmployee
-    public function assignedEmployee()
+    public function division()
     {
-        return $this->belongsTo(Employee::class, 'assigned_employee_id');
+        return $this->belongsTo(Division::class);
     }
 
     public function submissions()
@@ -64,8 +51,8 @@ class Task extends Model implements HasMedia
         return $this->hasMany(TaskSubmission::class);
     }
 
-    public function evaluations()
+    public function manager()
     {
-        return $this->hasMany(PerformanceEvaluation::class);
+        return $this->belongsTo(User::class, 'created_by_manager_id');
     }
 }

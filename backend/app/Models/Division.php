@@ -9,7 +9,13 @@ class Division extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description'];
+    protected $table = 'divisions';
+
+    protected $fillable = [
+        'name',
+        'code',
+        'description',
+    ];
 
     public function employees()
     {
