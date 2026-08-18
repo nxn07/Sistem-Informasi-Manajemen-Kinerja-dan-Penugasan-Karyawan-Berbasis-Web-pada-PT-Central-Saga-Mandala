@@ -7,13 +7,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'id'          => $this->id,
+            'name'        => $this->name ?? $this->username,
+            'email'       => $this->email,
+            'roles'       => method_exists($this->resource, 'getRoleNames') ? $this->getRoleNames() : [],
+            'permissions' => method_exists($this->resource, 'getAllPermissions') ? $this->getAllPermissions()->pluck('name') : [],
+            'created_at'  => $this->created_at,
+        ];
     }
 }

@@ -4,34 +4,35 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\Task;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 class TaskRepository implements TaskRepositoryInterface
 {
-    public function getAll()
+    public function getAll(): Collection
     {
-        return Task::with(['manager', 'assignedEmployee'])->get();
+        return Task::with(['manager', 'employee', 'division', 'submissions'])->latest()->get();
     }
 
-    public function findById(int $id)
+    public function findById(int $id): Task
     {
-        return Task::with(['manager', 'assignedEmployee', 'submissions'])->findOrFail($id);
+        return Task::with(['manager', 'employee', 'division', 'submissions'])->findOrFail($id);
     }
 
-    public function create(array $data)
+    public function create(array $data): Task
     {
         return Task::create($data);
     }
 
-    public function update(int $id, array $data)
+    public function update(int $id, array $data): Task
     {
         $task = $this->findById($id);
         $task->update($data);
         return $task;
     }
 
-    public function delete(int $id)
+    public function delete(int $id): bool
     {
         $task = $this->findById($id);
-        return $task->delete();
+        return (bool) $task->delete();
     }
 }

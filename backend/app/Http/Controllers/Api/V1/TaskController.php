@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ReviewTaskRequest;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\SubmitTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use App\Services\Contracts\TaskServiceInterface;
@@ -74,6 +75,45 @@ class TaskController extends Controller
         }
     }
 
+    public function update(UpdateTaskRequest $request, int $id): JsonResponse
+    {
+        try {
+            $task = $this->taskService->getTaskById($id);
+            $this->authorize('update', $task);
+
+            $updatedTask = $this->taskService->updateTask($id, $request->validated());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tugas berhasil diperbarui.',
+                'data'    => new TaskResource($updatedTask),
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $task = $this->taskService->getTaskById($id);
+            $this->authorize('delete', $task);
+
+            $this->taskService->deleteTask($id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tugas berhasil dihapus.',
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function submit(SubmitTaskRequest $request, int $id): JsonResponse
     {
         try {
@@ -89,6 +129,10 @@ class TaskController extends Controller
             }
 
             $submission = $this->taskService->submitTask($task, $submissionData);
+
+            if ($request->hasFile('file')) {
+                $submission->addMediaFromRequest('file')->toMediaCollection('task_files');
+            }
 
             return response()->json([
                 'success' => true,

@@ -4,45 +4,50 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class PerformanceEvaluation extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $table = 'performance_evaluations';
 
     protected $fillable = [
         'task_id',
         'employee_id',
-        'evaluator_manager_id',
         'kpi_criteria_id',
         'score',
         'feedback_notes',
-        'evaluated_at',
+        'notes',
+        'evaluated_by_manager_id',
     ];
 
-    public function task()
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty();
+    }
+
+    public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
     }
 
-    public function employee()
+    public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
     }
 
-    public function evaluatorManager()
-    {
-        return $this->belongsTo(User::class, 'evaluator_manager_id');
-    }
-
-    public function evaluator()
-    {
-        return $this->belongsTo(User::class, 'evaluator_manager_id');
-    }
-
-    public function kpiCriteria()
+    public function kpiCriteria(): BelongsTo
     {
         return $this->belongsTo(KpiCriteria::class, 'kpi_criteria_id');
+    }
+
+    public function evaluator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'evaluated_by_manager_id');
     }
 }

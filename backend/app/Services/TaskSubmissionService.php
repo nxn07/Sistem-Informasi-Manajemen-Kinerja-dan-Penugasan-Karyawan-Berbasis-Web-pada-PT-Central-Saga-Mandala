@@ -5,12 +5,13 @@ namespace App\Services;
 use App\Models\Task;
 use App\Models\TaskSubmission;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskSubmissionServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-class TaskSubmissionService
+class TaskSubmissionService implements TaskSubmissionServiceInterface
 {
     protected TaskRepositoryInterface $taskRepository;
 
