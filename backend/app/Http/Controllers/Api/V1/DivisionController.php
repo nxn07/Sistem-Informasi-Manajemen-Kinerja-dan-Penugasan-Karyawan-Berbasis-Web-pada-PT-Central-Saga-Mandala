@@ -3,40 +3,43 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDivisionRequest;
+use App\Http\Requests\UpdateDivisionRequest;
 use App\Http\Resources\DivisionResource;
 use App\Models\Division;
+use App\Services\Contracts\DivisionServiceInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Throwable;
 
 class DivisionController extends Controller
 {
+    protected DivisionServiceInterface $divisionService;
+
+    public function __construct(DivisionServiceInterface $divisionService)
+    {
+        $this->divisionService = $divisionService;
+    }
+
     public function index(): JsonResponse
     {
         try {
-            $divisions = Division::all();
+            $divisions = $this->divisionService->getAllDivisions();
             return response()->json([
                 'success' => true,
                 'message' => 'Daftar divisi berhasil diambil.',
                 'data'    => DivisionResource::collection($divisions),
             ], 200);
         } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengambil data divisi: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreDivisionRequest $request): JsonResponse
     {
         try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'description' => 'nullable|string',
-            ]);
-
-            $division = Division::create($validated);
+            $this->authorize('create', Division::class);
+            $division = $this->divisionService->createDivision($request->validated());
 
             return response()->json([
                 'success' => true,
@@ -44,43 +47,41 @@ class DivisionController extends Controller
                 'data'    => new DivisionResource($division),
             ], 201);
         } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal membuat divisi: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
     public function show(int $id): JsonResponse
     {
         try {
-            $division = Division::findOrFail($id);
+            $division = $this->divisionService->getDivisionById($id);
             return response()->json([
                 'success' => true,
                 'message' => 'Detail divisi berhasil ditemukan.',
                 'data'    => new DivisionResource($division),
             ], 200);
-        } catch (Throwable $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json(['success' => false, 'message' => 'Divisi tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateDivisionRequest $request, int $id): JsonResponse
     {
         try {
-            $division = Division::findOrFail($id);
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'description' => 'nullable|string',
-            ]);
+            $division = $this->divisionService->getDivisionById($id);
+            $this->authorize('update', $division);
 
-            $division->update($validated);
+            $updated = $this->divisionService->updateDivision($id, $request->validated());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Divisi berhasil diperbarui.',
-                'data'    => new DivisionResource($division),
+                'data'    => new DivisionResource($updated),
             ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Divisi tidak ditemukan.'], 404);
         } catch (Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -89,13 +90,17 @@ class DivisionController extends Controller
     public function destroy(int $id): JsonResponse
     {
         try {
-            $division = Division::findOrFail($id);
-            $division->delete();
+            $division = $this->divisionService->getDivisionById($id);
+            $this->authorize('delete', $division);
+
+            $this->divisionService->deleteDivision($id);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Divisi berhasil dihapus.',
             ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Divisi tidak ditemukan.'], 404);
         } catch (Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }

@@ -3,21 +3,32 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreKpiRequest;
+use App\Http\Requests\UpdateKpiRequest;
+use App\Http\Resources\KpiResource;
 use App\Models\KpiCriteria;
+use App\Services\Contracts\KpiServiceInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Throwable;
 
 class KpiController extends Controller
 {
+    protected KpiServiceInterface $kpiService;
+
+    public function __construct(KpiServiceInterface $kpiService)
+    {
+        $this->kpiService = $kpiService;
+    }
+
     public function index(): JsonResponse
     {
         try {
-            $kpis = KpiCriteria::all();
+            $kpis = $this->kpiService->getAllKpis();
             return response()->json([
                 'success' => true,
                 'message' => 'Daftar kriteria KPI berhasil diambil.',
-                'data'    => $kpis,
+                'data'    => KpiResource::collection($kpis),
             ], 200);
         } catch (Throwable $e) {
             return response()->json([
@@ -27,34 +38,24 @@ class KpiController extends Controller
         }
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreKpiRequest $request): JsonResponse
     {
         try {
-            $name = $request->input('criteria_name') ?? $request->input('name');
-            $weight = $request->input('weight_percentage') ?? $request->input('weight');
+            $data = $request->validated();
 
-            if (!$name || $weight === null) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Kolom criteria_name / name dan weight_percentage / weight wajib diisi.',
-                ], 422);
-            }
-
+            // Normalisasi payload toleran nama kolom
             $payload = [
-                'criteria_name'     => $name,
-                'weight_percentage' => $weight,
+                'criteria_name'     => $data['criteria_name'] ?? $data['name'] ?? null,
+                'weight_percentage' => $data['weight_percentage'] ?? $data['weight'] ?? null,
+                'description'       => $data['description'] ?? null,
             ];
 
-            if ($request->has('description')) {
-                $payload['description'] = $request->input('description');
-            }
-
-            $kpi = KpiCriteria::create($payload);
+            $kpi = $this->kpiService->createKpi($payload);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Kriteria KPI berhasil dibuat.',
-                'data'    => $kpi,
+                'data'    => new KpiResource($kpi),
             ], 201);
         } catch (Throwable $e) {
             return response()->json([
@@ -67,40 +68,44 @@ class KpiController extends Controller
     public function show(int $id): JsonResponse
     {
         try {
-            $kpi = KpiCriteria::findOrFail($id);
+            $kpi = $this->kpiService->getKpiById($id);
             return response()->json([
                 'success' => true,
                 'message' => 'Detail KPI berhasil ditemukan.',
-                'data'    => $kpi,
+                'data'    => new KpiResource($kpi),
             ], 200);
-        } catch (Throwable $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json(['success' => false, 'message' => 'Kriteria KPI tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateKpiRequest $request, int $id): JsonResponse
     {
         try {
-            $kpi = KpiCriteria::findOrFail($id);
+            $data = $request->validated();
+            $payload = [];
 
-            $data = [];
-            if ($request->has('criteria_name') || $request->has('name')) {
-                $data['criteria_name'] = $request->input('criteria_name') ?? $request->input('name');
+            if (isset($data['criteria_name']) || isset($data['name'])) {
+                $payload['criteria_name'] = $data['criteria_name'] ?? $data['name'];
             }
-            if ($request->has('weight_percentage') || $request->has('weight')) {
-                $data['weight_percentage'] = $request->input('weight_percentage') ?? $request->input('weight');
+            if (isset($data['weight_percentage']) || isset($data['weight'])) {
+                $payload['weight_percentage'] = $data['weight_percentage'] ?? $data['weight'];
             }
-            if ($request->has('description')) {
-                $data['description'] = $request->input('description');
+            if (isset($data['description'])) {
+                $payload['description'] = $data['description'];
             }
 
-            $kpi->update($data);
+            $kpi = $this->kpiService->updateKpi($id, $payload);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Kriteria KPI berhasil diperbarui.',
-                'data'    => $kpi,
+                'data'    => new KpiResource($kpi),
             ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Kriteria KPI tidak ditemukan.'], 404);
         } catch (Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -109,13 +114,14 @@ class KpiController extends Controller
     public function destroy(int $id): JsonResponse
     {
         try {
-            $kpi = KpiCriteria::findOrFail($id);
-            $kpi->delete();
+            $this->kpiService->deleteKpi($id);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Kriteria KPI berhasil dihapus.',
             ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Kriteria KPI tidak ditemukan.'], 404);
         } catch (Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }

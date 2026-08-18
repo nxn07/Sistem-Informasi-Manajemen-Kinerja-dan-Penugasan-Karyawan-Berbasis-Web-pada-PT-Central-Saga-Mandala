@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Task extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $table = 'tasks';
 
@@ -26,19 +28,16 @@ class Task extends Model
         'division_id',
     ];
 
-    protected function casts(): array
+    public function getActivitylogOptions(): LogOptions
     {
-        return [
-            'start_date' => 'date',
-            'deadline'   => 'date',
-            'due_date'   => 'date',
-            'weight'     => 'float',
-        ];
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty();
     }
 
-    public function employee()
+    public function submissions()
     {
-        return $this->belongsTo(Employee::class, 'assigned_employee_id');
+        return $this->hasMany(TaskSubmission::class);
     }
 
     public function division()
@@ -46,9 +45,9 @@ class Task extends Model
         return $this->belongsTo(Division::class);
     }
 
-    public function submissions()
+    public function employee()
     {
-        return $this->hasMany(TaskSubmission::class);
+        return $this->belongsTo(Employee::class, 'assigned_employee_id');
     }
 
     public function manager()

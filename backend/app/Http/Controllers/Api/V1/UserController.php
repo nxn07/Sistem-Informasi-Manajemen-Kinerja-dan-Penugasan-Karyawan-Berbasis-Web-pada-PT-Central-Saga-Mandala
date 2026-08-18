@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Throwable;
 
 class UserController extends Controller
@@ -36,12 +37,12 @@ class UserController extends Controller
         }
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreUserRequest $request): JsonResponse
     {
         try {
             $this->authorize('create', User::class);
 
-            $user = $this->userService->createUser($request->all());
+            $user = $this->userService->createUser($request->validated());
             return response()->json([
                 'success' => true,
                 'message' => 'User berhasil dibuat.',
@@ -70,13 +71,13 @@ class UserController extends Controller
         }
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateUserRequest $request, int $id): JsonResponse
     {
         try {
             $user = $this->userService->getUserById($id);
             $this->authorize('update', $user);
 
-            $updated = $this->userService->updateUser($id, $request->all());
+            $updated = $this->userService->updateUser($id, $request->validated());
             return response()->json([
                 'success' => true,
                 'message' => 'User berhasil diperbarui.',

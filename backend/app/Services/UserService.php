@@ -3,96 +3,103 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\UserServiceInterface;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UserService implements UserServiceInterface
 {
-    public function getAllUsers(): Collection
+    const CACHE_KEY_ALL = 'users_all';
+    const CACHE_TTL = 3600;
+
+    protected UserRepositoryInterface $userRepository;
+
+    public function __construct(UserRepositoryInterface $userRepository)
     {
-        return User::with('employee.division')->get();
+        $this->userRepository = $userRepository;
     }
 
-    public function getUserById(int $id): User
+    protected function clearCache(?int $id = null): void
     {
-        return User::with('employee.division')->findOrFail($id);
+        Cache::forget(self::CACHE_KEY_ALL);
+        if ($id) {
+            Cache::forget("users_{$id}");
+        }
     }
 
-    public function createUser(array $data): User
+    protected function normalizeRoleName(string $role): string
     {
-        return DB::transaction(function () use ($data) {
-            $userData = [
-                'username' => $data['username'] ?? $data['name'] ?? null,
-                'email'    => $data['email'],
-                'password' => Hash::make($data['password']),
-                'role'     => $data['role'] ?? 'KARYAWAN',
-            ];
+        $role = strtolower(trim($role));
+        if ($role === 'karyawan') {
+            return 'employee';
+        }
+        return $role;
+    }
 
-            $user = User::create($userData);
-
-            if (!empty($data['role'])) {
-                $user->assignRole($data['role']);
-            }
-
-            if (!empty($data['division_id'])) {
-                $nik = $data['nik'] ?? ('EMP-' . date('Ymd') . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT));
-                $fullName = $data['full_name'] ?? $data['name'] ?? $data['username'] ?? 'Pegawai Baru';
-
-                $user->employee()->create([
-                    'division_id' => $data['division_id'],
-                    'nik'         => $nik,
-                    'full_name'   => $fullName, // <-- Kolom yang benar
-                    'position'    => $data['position'] ?? 'Staff',
-                ]);
-            }
-
-            return $user->load('employee.division');
+    public function getAllUsers()
+    {
+        return Cache::remember(self::CACHE_KEY_ALL, self::CACHE_TTL, function () {
+            return $this->userRepository->getAll();
         });
     }
 
-    public function updateUser(int $id, array $data): User
+    public function getUserById(int $id)
+    {
+        return Cache::remember("users_{$id}", self::CACHE_TTL, function () use ($id) {
+            return $this->userRepository->findById($id);
+        });
+    }
+
+    public function createUser(array $data)
+    {
+        return DB::transaction(function () use ($data) {
+            $role = isset($data['role']) ? $this->normalizeRoleName($data['role']) : 'employee';
+
+            $payload = [
+                'name'     => $data['name'],
+                'email'    => $data['email'],
+                'password' => Hash::make($data['password']),
+                'role'     => strtoupper($role),
+            ];
+
+            $user = $this->userRepository->create($payload);
+            $user->syncRoles([$role]);
+
+            $this->clearCache();
+            return $user->load('roles');
+        });
+    }
+
+    public function updateUser(int $id, array $data)
     {
         return DB::transaction(function () use ($id, $data) {
-            $user = User::findOrFail($id);
+            $payload = [];
+            if (isset($data['name'])) $payload['name'] = $data['name'];
+            if (isset($data['email'])) $payload['email'] = $data['email'];
+            if (!empty($data['password'])) $payload['password'] = Hash::make($data['password']);
 
-            $updateData = [];
-            if (isset($data['username']) || isset($data['name'])) {
-                $updateData['username'] = $data['username'] ?? $data['name'];
-            }
-            if (isset($data['email'])) {
-                $updateData['email'] = $data['email'];
-            }
-            if (!empty($data['password'])) {
-                $updateData['password'] = Hash::make($data['password']);
-            }
             if (isset($data['role'])) {
-                $updateData['role'] = $data['role'];
-                $user->syncRoles([$data['role']]);
+                $role = $this->normalizeRoleName($data['role']);
+                $payload['role'] = strtoupper($role);
             }
 
-            $user->update($updateData);
+            $user = $this->userRepository->update($id, $payload);
 
-            if (isset($data['division_id']) || isset($data['nik']) || isset($data['position']) || isset($data['full_name']) || isset($data['name'])) {
-                $employeeData = [];
-                if (isset($data['division_id'])) $employeeData['division_id'] = $data['division_id'];
-                if (isset($data['nik'])) $employeeData['nik'] = $data['nik'];
-                if (isset($data['position'])) $employeeData['position'] = $data['position'];
-                if (isset($data['full_name']) || isset($data['name'])) {
-                    $employeeData['full_name'] = $data['full_name'] ?? $data['name'];
-                }
-
-                $user->employee()->updateOrCreate(['user_id' => $user->id], $employeeData);
+            if (isset($role)) {
+                $user->syncRoles([$role]);
             }
 
-            return $user->load('employee.division');
+            $this->clearCache($id);
+            return $user->load('roles');
         });
     }
 
     public function deleteUser(int $id): bool
     {
-        $user = User::findOrFail($id);
-        return $user->delete();
+        $deleted = $this->userRepository->delete($id);
+        $this->clearCache($id);
+        return $deleted;
     }
 }

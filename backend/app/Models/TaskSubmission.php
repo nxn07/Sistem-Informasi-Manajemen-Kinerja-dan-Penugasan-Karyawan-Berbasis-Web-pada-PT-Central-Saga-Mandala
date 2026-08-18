@@ -15,6 +15,7 @@ class TaskSubmission extends Model
         'task_id',
         'employee_id',
         'file_path',
+        'submission_file', // <-- Menampung path berkas upload dari Factory/Service
         'submission_link',
         'notes',
         'submitted_at',
@@ -22,6 +23,13 @@ class TaskSubmission extends Model
         'review_notes',
         'status',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'submitted_at' => 'datetime',
+        ];
+    }
 
     public function task()
     {
