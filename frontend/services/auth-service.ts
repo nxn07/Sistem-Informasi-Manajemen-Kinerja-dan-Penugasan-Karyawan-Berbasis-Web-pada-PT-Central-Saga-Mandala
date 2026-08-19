@@ -24,19 +24,32 @@ export const authService = {
       
       return { token, user };
     } catch {
-      // Demo Role Login Fallback
-      let mockUser: User = {
-        id: 1,
-        name: "Admin System",
-        email: payload.email || "admin@gmail.com",
-        role: "ADMIN",
-        roles: ["ADMIN"],
-        permissions: ["*"],
-        created_at: "2026-08-19",
-      };
+      const cleanEmail = (payload.email || "").trim().toLowerCase();
+      const cleanPassword = (payload.password || "").trim();
 
-      if (payload.email?.includes("manager")) {
-        mockUser = {
+      // Strict credential check per role
+      if (cleanPassword !== "password") {
+        throw new Error("Gagal Masuk: Combination email atau password salah (401 Unauthorized).");
+      }
+
+      if (cleanEmail === "admin@gmail.com") {
+        const mockUser: User = {
+          id: 1,
+          name: "Admin System",
+          email: "admin@gmail.com",
+          role: "ADMIN",
+          roles: ["ADMIN"],
+          permissions: ["*"],
+          created_at: "2026-08-19",
+        };
+        const mockToken = `demo_token_ADMIN_${Date.now()}`;
+        Cookies.set('simkap_token', mockToken, { expires: 7 });
+        Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
+        return { token: mockToken, user: mockUser };
+      }
+
+      if (cleanEmail === "manager@gmail.com") {
+        const mockUser: User = {
           id: 2,
           name: "Manager Utama",
           email: "manager@gmail.com",
@@ -45,8 +58,14 @@ export const authService = {
           permissions: ["tasks.create", "tasks.review", "evaluations.create"],
           created_at: "2026-08-19",
         };
-      } else if (payload.email?.includes("employee") || payload.email?.includes("sarah")) {
-        mockUser = {
+        const mockToken = `demo_token_MANAGER_${Date.now()}`;
+        Cookies.set('simkap_token', mockToken, { expires: 7 });
+        Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
+        return { token: mockToken, user: mockUser };
+      }
+
+      if (cleanEmail === "employee@gmail.com" || cleanEmail === "sarah@gmail.com") {
+        const mockUser: User = {
           id: 3,
           name: "Sarah Jenkins",
           email: "sarah@gmail.com",
@@ -55,13 +74,14 @@ export const authService = {
           permissions: ["tasks.submit", "evaluations.view_own"],
           created_at: "2026-08-19",
         };
+        const mockToken = `demo_token_EMPLOYEE_${Date.now()}`;
+        Cookies.set('simkap_token', mockToken, { expires: 7 });
+        Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
+        return { token: mockToken, user: mockUser };
       }
 
-      const mockToken = `demo_token_${mockUser.role}_${Date.now()}`;
-      Cookies.set('simkap_token', mockToken, { expires: 7 });
-      Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
-
-      return { token: mockToken, user: mockUser };
+      // Invalid email credential error
+      throw new Error(`Email '${payload.email}' tidak terdaftar atau password salah (401 Unauthorized).`);
     }
   },
 
@@ -78,10 +98,22 @@ export const authService = {
   },
 
   async getMe(): Promise<User> {
-    const response = await apiClient.get<ApiResponse<User>>('/auth/me');
-    const user = response.data.data;
-    Cookies.set('simkap_user', JSON.stringify(user), { expires: 7 });
-    return user;
+    const token = Cookies.get('simkap_token');
+    const cachedUser = this.getCurrentUser();
+
+    if (token?.startsWith('demo_') && cachedUser) {
+      return cachedUser;
+    }
+
+    try {
+      const response = await apiClient.get<ApiResponse<User>>('/auth/me');
+      const user = response.data.data;
+      Cookies.set('simkap_user', JSON.stringify(user), { expires: 7 });
+      return user;
+    } catch {
+      if (cachedUser) return cachedUser;
+      throw new Error('Unauthenticated');
+    }
   },
 
   getCurrentUser(): User | null {

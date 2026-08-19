@@ -30,6 +30,8 @@ RUN composer install --no-interaction --prefer-dist --optimize-autoloader --igno
 # Buat symlink storage ke public agar file upload tidak 404
 RUN php artisan storage:link
 
+ENV PHP_CLI_SERVER_WORKERS=4
+
 EXPOSE 8000
 
 CMD php artisan serve --host=0.0.0.0 --port=8000

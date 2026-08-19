@@ -33,7 +33,8 @@ class TaskServiceTest extends TestCase
         $taskRepositoryMock = Mockery::mock(TaskRepositoryInterface::class);
         $submissionServiceMock = Mockery::mock(TaskSubmissionService::class);
 
-        $task = new Task(['id' => 1, 'title' => 'Task #1']);
+        $task = new Task(['title' => 'Task #1']);
+        $task->id = 1;
 
         $taskRepositoryMock->shouldReceive('findById')
             ->with(1)

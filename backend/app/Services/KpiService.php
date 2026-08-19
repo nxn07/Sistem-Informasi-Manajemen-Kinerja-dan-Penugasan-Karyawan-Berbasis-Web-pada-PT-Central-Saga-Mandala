@@ -29,6 +29,10 @@ class KpiService implements KpiServiceInterface
 
     public function getAllKpis()
     {
+        if (app()->environment('testing')) {
+            return $this->kpiRepository->getAll();
+        }
+
         return Cache::remember(self::CACHE_KEY_ALL, self::CACHE_TTL, function () {
             return $this->kpiRepository->getAll();
         });

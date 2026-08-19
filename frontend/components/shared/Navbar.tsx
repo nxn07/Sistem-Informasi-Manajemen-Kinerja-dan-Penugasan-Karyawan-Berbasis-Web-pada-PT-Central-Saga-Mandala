@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { authService } from "@/services/auth-service";
 import { User } from "@/types/api";
-import Cookies from "js-cookie";
-import { UserCircle, Shield, Briefcase, UserCheck, LogOut, RefreshCw } from "lucide-react";
+import { Shield, Briefcase, UserCheck, LogOut } from "lucide-react";
 
 export default function Navbar() {
+  const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
 
@@ -16,48 +16,31 @@ export default function Navbar() {
     setUser(currentUser);
   }, []);
 
-  const switchRoleDemo = (roleType: "ADMIN" | "MANAGER" | "EMPLOYEE") => {
-    let mockUser: User = {
-      id: 1,
-      name: "Admin System",
-      email: "admin@gmail.com",
-      role: "ADMIN",
-      roles: ["ADMIN"],
-      permissions: ["*"],
-      created_at: "2026-08-19",
-    };
-
-    if (roleType === "MANAGER") {
-      mockUser = {
-        id: 2,
-        name: "Manager Utama",
-        email: "manager@gmail.com",
-        role: "MANAGER",
-        roles: ["MANAGER"],
-        permissions: ["tasks.create", "tasks.review", "evaluations.create"],
-        created_at: "2026-08-19",
-      };
-    } else if (roleType === "EMPLOYEE") {
-      mockUser = {
-        id: 3,
-        name: "Sarah Jenkins",
-        email: "sarah@gmail.com",
-        role: "EMPLOYEE",
-        roles: ["EMPLOYEE"],
-        permissions: ["tasks.submit", "evaluations.view_own"],
-        created_at: "2026-08-19",
-      };
-    }
-
-    const mockToken = `demo_token_${mockUser.role}_${Date.now()}`;
-    Cookies.set("simkap_token", mockToken, { expires: 7 });
-    Cookies.set("simkap_user", JSON.stringify(mockUser), { expires: 7 });
-    setUser(mockUser);
-    window.location.reload();
-  };
-
   const handleLogout = () => {
     authService.logout();
+  };
+
+  const getPageTitle = (path: string) => {
+    switch (path) {
+      case "/":
+        return "Dashboard Overview";
+      case "/tasks":
+        return "Manajemen Penugasan";
+      case "/evaluations":
+        return "Evaluasi Kinerja";
+      case "/divisions":
+        return "Master Divisi";
+      case "/kpis":
+        return "Kriteria KPI";
+      case "/users":
+        return "Manajemen User & RBAC";
+      case "/activity-logs":
+        return "Audit Log Aktivitas";
+      case "/settings":
+        return "Pengaturan Sistem";
+      default:
+        return "Dashboard Kinerja";
+    }
   };
 
   const getRoleBadge = (roleName?: string) => {
@@ -76,8 +59,8 @@ export default function Navbar() {
       );
     } else {
       return (
-        <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-slate-100 text-slate-700 border border-slate-200 inline-flex items-center gap-1">
-          <UserCheck className="w-3 h-3 text-slate-600" /> EMPLOYEE
+        <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+          <UserCheck className="w-3 h-3 text-emerald-600" /> EMPLOYEE
         </span>
       );
     }
@@ -85,51 +68,21 @@ export default function Navbar() {
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-2xs">
-      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-        Dashboard Kinerja Karyawan — <span className="text-blue-600 font-extrabold">Central Saga</span>
+      {/* Dynamic Title based on Active Route */}
+      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+        <span className="text-slate-900 font-black text-sm capitalize tracking-normal">
+          {getPageTitle(pathname)}
+        </span>
+        <span className="text-slate-300">•</span>
+        <span className="text-emerald-600 font-extrabold">Central Saga</span>
       </div>
 
-      {/* Right Header Controls: Role Switcher & User Profile */}
+      {/* Right Header Controls: User Profile & Logout */}
       <div className="flex items-center gap-4">
-        {/* Quick Role Switcher Bar */}
-        <div className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-[11px] font-bold">
-          <span className="text-[10px] text-slate-400 px-2 uppercase tracking-wider">Role Active:</span>
-          <button
-            onClick={() => switchRoleDemo("ADMIN")}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-              user?.role?.toUpperCase() === "ADMIN"
-                ? "bg-rose-600 text-white shadow-2xs font-extrabold"
-                : "text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            ADMIN
-          </button>
-          <button
-            onClick={() => switchRoleDemo("MANAGER")}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-              user?.role?.toUpperCase() === "MANAGER"
-                ? "bg-blue-600 text-white shadow-2xs font-extrabold"
-                : "text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            MANAGER
-          </button>
-          <button
-            onClick={() => switchRoleDemo("EMPLOYEE")}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-              user?.role?.toUpperCase() === "EMPLOYEE"
-                ? "bg-slate-800 text-white shadow-2xs font-extrabold"
-                : "text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            EMPLOYEE
-          </button>
-        </div>
-
-        {/* User Info & Logout Button */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-900 text-white font-extrabold flex items-center justify-center text-xs shadow-2xs">
-            {user?.name?.slice(0, 2).toUpperCase() || "AS"}
+        {/* User Info & Logout Button Pill Card with Elegant Shadow */}
+        <div className="flex items-center gap-3 bg-white p-1.5 pl-3.5 pr-2 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-700 to-teal-800 text-white font-extrabold flex items-center justify-center text-xs shadow-2xs">
+            {user?.name?.slice(0, 2).toUpperCase() || "CS"}
           </div>
           <div className="text-right">
             <div className="flex items-center gap-1.5 justify-end">
@@ -141,7 +94,7 @@ export default function Navbar() {
 
           <button
             onClick={handleLogout}
-            className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+            className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 text-xs font-bold"
             title="Keluar / Ke Halaman Login"
           >
             <LogOut className="w-4 h-4" />

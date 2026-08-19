@@ -22,8 +22,8 @@ const menuItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["ADMIN", "MANAGER", "EMPLOYEE"] },
   { name: "Manajemen Tugas", href: "/tasks", icon: CheckSquare, roles: ["ADMIN", "MANAGER", "EMPLOYEE"] },
   { name: "Evaluasi Kinerja", href: "/evaluations", icon: Award, roles: ["ADMIN", "MANAGER", "EMPLOYEE"] },
-  { name: "Master Divisi", href: "/divisions", icon: Building2, roles: ["ADMIN", "MANAGER"] },
-  { name: "Kriteria KPI", href: "/kpis", icon: Target, roles: ["ADMIN", "MANAGER"] },
+  { name: "Master Divisi", href: "/divisions", icon: Building2, roles: ["ADMIN"] },
+  { name: "Kriteria KPI", href: "/kpis", icon: Target, roles: ["ADMIN"] },
   { name: "Manajemen User", href: "/users", icon: Users, roles: ["ADMIN"] },
   { name: "Audit Log", href: "/activity-logs", icon: History, roles: ["ADMIN"] },
   { name: "Pengaturan", href: "/settings", icon: Settings, roles: ["ADMIN"] },
@@ -36,17 +36,17 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between p-4 shrink-0 border-r border-slate-800">
       <div>
-        {/* Brand Header with Central Saga Branding */}
+        {/* Brand Header with Official Central Saga Green Logo & Name */}
         <div className="px-3 py-4 mb-4 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold shadow-md shrink-0">
-            <Sparkles className="w-5 h-5 text-blue-200" />
+          <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0 border border-emerald-500/30">
+            <img src="/central-saga-logo.png" alt="Central Saga" className="w-full h-full object-contain" />
           </div>
           <div>
-            <h1 className="text-base font-extrabold tracking-tight text-white leading-tight">
-              Performa.id
+            <h1 className="text-base font-black tracking-tight text-white leading-tight">
+              Central Saga
             </h1>
-            <p className="text-[10px] font-semibold text-blue-400 tracking-wide uppercase">
-              Central Saga Ent.
+            <p className="text-[10px] font-bold text-emerald-400 tracking-wide uppercase">
+              Enterprise Performance
             </p>
           </div>
         </div>
@@ -101,8 +101,8 @@ export default function Sidebar() {
 
       {/* User Footer & Logout */}
       <div className="pt-4 border-t border-slate-800 space-y-3">
-        <div className="px-3 py-2 bg-slate-800/60 rounded-xl flex items-center gap-2 text-xs">
-          <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">
+        <div className="px-3 py-2 bg-slate-800/80 rounded-xl border border-slate-700/60 shadow-xs flex items-center gap-2 text-xs">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shadow-2xs">
             {user?.name?.slice(0, 2).toUpperCase() || "AS"}
           </div>
           <div className="overflow-hidden flex-1">
@@ -117,7 +117,7 @@ export default function Sidebar() {
 
         <button
           onClick={() => authService.logout()}
-          className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors cursor-pointer"
+          className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-bold text-rose-300 bg-rose-500/10 hover:bg-rose-600 hover:text-white border border-rose-500/20 shadow-xs hover:shadow-sm transition-all cursor-pointer active:scale-98"
         >
           <LogOut className="w-4 h-4 shrink-0" />
           <span>Keluar (Logout)</span>

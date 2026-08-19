@@ -24,7 +24,8 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    const token = Cookies.get('simkap_token');
+    if (error.response?.status === 401 && !token?.startsWith('demo_')) {
       Cookies.remove('simkap_token');
       Cookies.remove('simkap_user');
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
