@@ -36,16 +36,12 @@ class TaskService implements TaskServiceInterface
 
     public function getAllTasks()
     {
-        return Cache::remember(self::CACHE_KEY_ALL, self::CACHE_TTL, function () {
-            return $this->taskRepository->getAll();
-        });
+        return $this->taskRepository->getAll();
     }
 
     public function getTaskById(int $id)
     {
-        return Cache::remember("tasks_{$id}", self::CACHE_TTL, function () use ($id) {
-            return $this->taskRepository->findById($id);
-        });
+        return $this->taskRepository->findById($id);
     }
 
     public function createTask(array $data)

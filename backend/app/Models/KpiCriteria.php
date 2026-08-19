@@ -12,27 +12,19 @@ class KpiCriteria extends Model
 {
     use HasFactory, LogsActivity;
 
-    protected $table = 'kpi_criterias';
+    protected $table = 'kpi_criteria';
 
     protected $fillable = [
-        'name',
         'criteria_name',
-        'weight',
         'weight_percentage',
-        'target',
-        'unit',
         'description',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logFillable()
-            ->logOnlyDirty();
-    }
-
-    public function evaluations(): HasMany
-    {
-        return $this->hasMany(PerformanceEvaluation::class);
+            ->logOnly(['criteria_name', 'weight_percentage', 'description'])
+            ->logOnlyDirty()
+            ->useLogName('kpi_criteria');
     }
 }

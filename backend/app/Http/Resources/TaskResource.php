@@ -17,14 +17,16 @@ class TaskResource extends JsonResource
             'priority'     => $this->priority ?? 'High',
             'weight_score' => $this->weight ?? $this->weight_score,
             'status'       => $this->status,
-            'assigned_by'  => $this->created_by_manager_id ?? $this->assigned_by,
-            'employee'     => $this->employee ? [
+            'assigned_by'           => $this->created_by_manager_id ?? $this->assigned_by,
+            'assigned_employee_id'  => $this->assigned_employee_id ?? $this->employee_id,
+            'employee'              => $this->employee ? [
                 'id'        => $this->employee->id,
-                'full_name' => $this->employee->full_name,
+                'name'      => $this->employee->full_name ?? $this->employee->name ?? 'Pegawai',
+                'full_name' => $this->employee->full_name ?? $this->employee->name ?? 'Pegawai',
                 'position'  => $this->employee->position,
             ] : null,
-            'submissions'  => $this->submissions,
-            'created_at'   => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
+            'submissions'           => $this->submissions,
+            'created_at'            => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
         ];
     }
 }
