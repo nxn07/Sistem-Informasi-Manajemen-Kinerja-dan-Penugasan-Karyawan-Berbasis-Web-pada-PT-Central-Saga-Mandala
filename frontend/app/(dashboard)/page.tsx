@@ -160,33 +160,73 @@ export default function DashboardOverviewPage() {
               </span>
             </div>
 
-            {/* Visual Line Chart Graphic Mockup */}
-            <div className="h-56 w-full flex items-end justify-between gap-2 pt-6 pb-2 px-2 border-b border-slate-100">
-              {[
-                { month: "Jan", val: 65 },
-                { month: "Feb", val: 72 },
-                { month: "Mar", val: 68 },
-                { month: "Apr", val: 78 },
-                { month: "Mei", val: 82 },
-                { month: "Jun", val: 79 },
-                { month: "Jul", val: 86 },
-                { month: "Ags", val: 88.5 },
-              ].map((item, idx) => (
-                <div key={idx} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
-                  <div className="text-[10px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {item.val}%
-                  </div>
-                  <div
-                    style={{ height: `${item.val}%` }}
-                    className={`w-full max-w-[28px] rounded-t-lg transition-all group-hover:brightness-110 ${
-                      idx === 7
-                        ? "bg-gradient-to-t from-blue-600 to-indigo-600 shadow-md"
-                        : "bg-blue-100 hover:bg-blue-200"
-                    }`}
-                  />
-                  <span className="text-[11px] font-semibold text-slate-500 mt-1">{item.month}</span>
-                </div>
-              ))}
+            {/* High-Definition SVG Area Line Chart */}
+            <div className="relative w-full pt-4 pb-2">
+              <svg viewBox="0 0 500 160" className="w-full h-48 overflow-visible">
+                <defs>
+                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#1d4ed8" />
+                  </linearGradient>
+                </defs>
+
+                {/* Horizontal Gridlines */}
+                <line x1="20" y1="30" x2="485" y2="30" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+                <line x1="20" y1="70" x2="485" y2="70" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+                <line x1="20" y1="110" x2="485" y2="110" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+                <line x1="20" y1="150" x2="485" y2="150" stroke="#e2e8f0" strokeWidth="1" />
+
+                {/* Area Gradient Fill */}
+                <path
+                  d="M 25 95 C 60 78, 60 78, 90 78 C 120 78, 125 88, 155 88 C 185 88, 190 62, 220 62 C 250 62, 255 52, 285 52 C 315 52, 320 60, 350 60 C 380 60, 385 40, 415 40 C 445 40, 450 32, 480 32 L 480 150 L 25 150 Z"
+                  fill="url(#chartGradient)"
+                />
+
+                {/* Line Curve Path */}
+                <path
+                  d="M 25 95 C 60 78, 60 78, 90 78 C 120 78, 125 88, 155 88 C 185 88, 190 62, 220 62 C 250 62, 255 52, 285 52 C 315 52, 320 60, 350 60 C 380 60, 385 40, 415 40 C 445 40, 450 32, 480 32"
+                  fill="none"
+                  stroke="url(#lineGradient)"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                />
+
+                {/* Glowing Data Dots */}
+                {[
+                  { x: 25, y: 95, val: "65%" },
+                  { x: 90, y: 78, val: "72%" },
+                  { x: 155, y: 88, val: "68%" },
+                  { x: 220, y: 62, val: "78%" },
+                  { x: 285, y: 52, val: "82%" },
+                  { x: 350, y: 60, val: "79%" },
+                  { x: 415, y: 40, val: "86%" },
+                  { x: 480, y: 32, val: "88.5%" },
+                ].map((pt, i) => (
+                  <g key={i} className="group cursor-pointer">
+                    <circle cx={pt.x} cy={pt.y} r="5" fill="#ffffff" stroke="#1d4ed8" strokeWidth="3" />
+                    <circle cx={pt.x} cy={pt.y} r="9" fill="#2563eb" opacity="0.2" className="group-hover:opacity-60 transition-opacity" />
+                    <text x={pt.x} y={pt.y - 12} textAnchor="middle" fill="#1e293b" fontSize="10" fontWeight="bold">
+                      {pt.val}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+
+              {/* X Axis Month Labels */}
+              <div className="flex items-center justify-between px-2 pt-2 text-[11px] font-bold text-slate-500">
+                <span>Jan</span>
+                <span>Feb</span>
+                <span>Mar</span>
+                <span>Apr</span>
+                <span>Mei</span>
+                <span>Jun</span>
+                <span>Jul</span>
+                <span>Ags</span>
+              </div>
             </div>
           </div>
 

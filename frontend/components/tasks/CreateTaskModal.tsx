@@ -62,8 +62,8 @@ export function CreateTaskModal({
       setLoadingUsers(true);
       userService
         .getAll()
-        .then((data) => setUsers(data))
-        .catch(() => setUsers([]))
+        .then((data) => setUsers(data && data.length > 0 ? data : getFallbackUsers()))
+        .catch(() => setUsers(getFallbackUsers()))
         .finally(() => setLoadingUsers(false));
     } else {
       reset();
@@ -211,4 +211,15 @@ export function CreateTaskModal({
       </form>
     </Modal>
   );
+}
+
+function getFallbackUsers(): User[] {
+  return [
+    { id: 1, name: "Sarah Jenkins", email: "sarah@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: [], created_at: "2026-08-19" },
+    { id: 2, name: "Michael Ross", email: "michael@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: [], created_at: "2026-08-19" },
+    { id: 3, name: "Natalie McDermott", email: "natalie@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: [], created_at: "2026-08-19" },
+    { id: 4, name: "Van Larkin", email: "van@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: [], created_at: "2026-08-19" },
+    { id: 5, name: "Miss Felicity Runte", email: "felicity@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: [], created_at: "2026-08-19" },
+    { id: 6, name: "Manager Utama", email: "manager@gmail.com", role: "MANAGER", roles: ["MANAGER"], permissions: [], created_at: "2026-08-19" },
+  ];
 }

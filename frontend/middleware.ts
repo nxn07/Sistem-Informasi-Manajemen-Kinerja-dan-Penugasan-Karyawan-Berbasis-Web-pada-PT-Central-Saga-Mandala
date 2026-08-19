@@ -16,12 +16,10 @@ export function middleware(request: NextRequest) {
   }
 
   if (token && isPublicRoute) {
-    return NextResponse.redirect(new URL('/tasks', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL(token ? '/tasks' : '/login', request.url));
-  }
+  return NextResponse.next();
 
   return NextResponse.next();
 }

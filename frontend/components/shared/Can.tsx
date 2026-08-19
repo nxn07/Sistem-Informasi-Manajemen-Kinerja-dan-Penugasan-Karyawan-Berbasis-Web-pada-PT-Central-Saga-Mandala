@@ -16,8 +16,22 @@ export function Can({ role, permission, children, fallback = null }: CanProps) {
   if (loading || !user) return <>{fallback}</>;
 
   if (role) {
-    const allowedRoles = Array.isArray(role) ? role : [role];
-    const userRoles = user.roles || (user.role ? [user.role] : ["ADMIN", "MANAGER"]);
+    const extractRoleName = (r: any): string => {
+      if (!r) return "";
+      if (typeof r === "string") return r.toUpperCase();
+      if (typeof r === "object" && r.name) return String(r.name).toUpperCase();
+      return String(r).toUpperCase();
+    };
+
+    const allowedRoles = (Array.isArray(role) ? role : [role]).map((r) => r.toUpperCase());
+
+    const getRawRoles = () => {
+      if (Array.isArray(user.roles) && user.roles.length > 0) return user.roles;
+      if (user.role) return [user.role];
+      return ["ADMIN", "MANAGER"];
+    };
+
+    const userRoles = getRawRoles().map(extractRoleName);
     const hasAllowedRole = userRoles.some((r) => allowedRoles.includes(r));
     if (!hasAllowedRole) return <>{fallback}</>;
   }
