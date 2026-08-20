@@ -7,6 +7,7 @@ import {
   SubmitTaskPayload,
 } from "@/services/task-service";
 import { Task } from "@/types/api";
+import Cookies from "js-cookie";
 
 const LOCAL_TASKS_KEY = "simkap_created_tasks";
 
@@ -65,7 +66,22 @@ export function useTasks() {
     try {
       setLoading(true);
       setError(null);
-      const data = await taskService.getAll();
+
+      // Check if logged in with demo token - if so, load instantly (0ms) without waiting for network timeout
+      const token = typeof window !== "undefined" ? Cookies.get("simkap_token") : null;
+      if (token?.startsWith("demo_")) {
+        const local = getLocalTasks();
+        setTasks(mergeTasks(getFallbackTasks(), local));
+        setLoading(false);
+        return;
+      }
+
+      // Try server fetch with 1.2s timeout
+      const data = await Promise.race([
+        taskService.getAll(),
+        new Promise<Task[]>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 1200)),
+      ]);
+
       const local = getLocalTasks();
       const combined = mergeTasks(data && data.length > 0 ? data : getFallbackTasks(), local);
       setTasks(combined);
@@ -90,38 +106,20 @@ export function useTasks() {
       minute: "2-digit",
     }) + " WIB";
 
-    let newTask: Task;
-    try {
-      newTask = await taskService.create(payload);
-    } catch {
-      const empId = payload.assigned_employee_id || 1;
-      newTask = {
-        id: Date.now(),
-        created_by_manager_id: 1,
-        title: payload.title,
-        description: payload.description || payload.title,
-        weight: payload.weight || 5,
-        weight_score: payload.weight || 5,
-        status: "PENDING",
-        deadline: payload.deadline || new Date().toISOString().split("T")[0],
-        due_date: payload.deadline || new Date().toISOString().split("T")[0],
-        updated_at: nowStr,
-        assigned_employee_id: empId,
-        employee: {
-          id: empId,
-          user_id: empId,
-          division_id: 1,
-          nip: "1990010" + empId,
-          name: getEmployeeNameById(empId),
-          full_name: getEmployeeNameById(empId),
-          position: "Staff Specialist",
-        },
-      };
-    }
-
-    if (!newTask.employee && newTask.assigned_employee_id) {
-      const empId = newTask.assigned_employee_id;
-      newTask.employee = {
+    const empId = payload.assigned_employee_id || 1;
+    const newTask: Task = {
+      id: Date.now(),
+      created_by_manager_id: 1,
+      title: payload.title,
+      description: payload.description || payload.title,
+      weight: payload.weight || 5,
+      weight_score: payload.weight || 5,
+      status: "PENDING",
+      deadline: payload.deadline || new Date().toISOString().split("T")[0],
+      due_date: payload.deadline || new Date().toISOString().split("T")[0],
+      updated_at: nowStr,
+      assigned_employee_id: empId,
+      employee: {
         id: empId,
         user_id: empId,
         division_id: 1,
@@ -129,11 +127,15 @@ export function useTasks() {
         name: getEmployeeNameById(empId),
         full_name: getEmployeeNameById(empId),
         position: "Staff Specialist",
-      };
-    }
+      },
+    };
 
+    // Save locally and update state instantly in 0ms
     saveLocalTask(newTask);
     setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
+
+    // Fire-and-forget backend create call asynchronously
+    taskService.create(payload).catch(() => {});
     return newTask;
   };
 
@@ -146,39 +148,37 @@ export function useTasks() {
       minute: "2-digit",
     }) + " WIB";
 
-    try {
-      await taskService.update(taskId, { status } as any);
-    } catch {
-      // ignore
-    }
+    // Optimistic UI state update (0ms instant)
     setTasks((prev) => {
       const updated = prev.map((t) => (t.id === taskId ? { ...t, status, updated_at: nowStr } : t));
       const target = updated.find((t) => t.id === taskId);
       if (target) saveLocalTask(target);
       return updated;
     });
+
+    // Fire-and-forget backend update call asynchronously
+    taskService.update(taskId, { status } as any).catch(() => {});
   };
 
   const deleteTask = async (id: number) => {
-    try {
-      await taskService.delete(id);
-    } catch {
-      // ignore
-    }
-    if (typeof window !== "undefined") {
-      const local = getLocalTasks().filter((t) => t.id !== id);
-      localStorage.setItem(LOCAL_TASKS_KEY, JSON.stringify(local));
-    }
+    // 1. Optimistic local state removal (0ms instant update)
     setTasks((prev) => prev.filter((t) => t.id !== id));
+
+    // 2. Remove from localStorage immediately
+    if (typeof window !== "undefined") {
+      try {
+        const local = getLocalTasks().filter((t) => t.id !== id);
+        localStorage.setItem(LOCAL_TASKS_KEY, JSON.stringify(local));
+      } catch {
+        // ignore
+      }
+    }
+
+    // 3. Fire-and-forget backend delete call asynchronously
+    taskService.delete(id).catch(() => {});
   };
 
   const submitTask = async (taskId: number, payload: SubmitTaskPayload) => {
-    try {
-      await taskService.submit(taskId, payload);
-    } catch {
-      // ignore
-    }
-
     const nowStr = new Date().toLocaleString("id-ID", {
       day: "numeric",
       month: "short",
@@ -190,6 +190,7 @@ export function useTasks() {
     const fileNameOrLink = payload.file?.name || payload.submission_link || "Laporan_Bukti_Kerja_CentralSaga.pdf";
     const detectedDocType = getDocTypeLabel(fileNameOrLink);
 
+    // Optimistic UI state update (0ms instant)
     setTasks((prev) => {
       const updated = prev.map((t) => {
         if (t.id === taskId) {
@@ -210,6 +211,9 @@ export function useTasks() {
       if (target) saveLocalTask(target);
       return updated;
     });
+
+    // Fire-and-forget backend submit call asynchronously
+    taskService.submit(taskId, payload).catch(() => {});
   };
 
   const reviewTask = async (
@@ -225,17 +229,16 @@ export function useTasks() {
       minute: "2-digit",
     }) + " WIB";
 
-    try {
-      await taskService.review(taskId, status, notes);
-    } catch {
-      // ignore
-    }
+    // Optimistic UI state update (0ms instant)
     setTasks((prev) => {
       const updated = prev.map((t) => (t.id === taskId ? { ...t, status: status as Task["status"], updated_at: nowStr } : t));
       const target = updated.find((t) => t.id === taskId);
       if (target) saveLocalTask(target);
       return updated;
     });
+
+    // Fire-and-forget backend review call asynchronously
+    taskService.review(taskId, status, notes).catch(() => {});
   };
 
   return {
