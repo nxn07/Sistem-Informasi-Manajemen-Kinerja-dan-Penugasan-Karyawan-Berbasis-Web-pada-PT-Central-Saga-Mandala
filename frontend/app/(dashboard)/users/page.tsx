@@ -5,6 +5,7 @@ import { userService } from "@/services/user-service";
 import { User } from "@/types/api";
 import { Toast } from "@/components/ui/Toast";
 import Cookies from "js-cookie";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Search,
   Shield,
@@ -14,9 +15,15 @@ import {
   UserPlus,
   Key,
   Users,
+  Trash2,
+  Lock,
 } from "lucide-react";
 
 export default function UsersPage() {
+  const { user } = useAuth();
+  const rawRole = (user?.role || user?.roles?.[0] || "ADMIN").toUpperCase();
+  const isAdmin = rawRole === "ADMIN";
+  const canDeleteUser = isAdmin || (user?.permissions?.includes("users.delete") ?? false);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -143,6 +150,21 @@ export default function UsersPage() {
       setToast({
         type: "error",
         message: "Gagal mendaftarkan user baru.",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (id: number, name: string) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus pengguna '${name}' dari sistem?`)) {
+      try {
+        await userService.delete(id);
+      } catch {
+        // ignore
+      }
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      setToast({
+        type: "success",
+        message: `Pengguna/Karyawan '${name}' berhasil dihapus dari sistem!`,
       });
     }
   };
@@ -275,13 +297,24 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <button
-                        onClick={() => openRbacModal(u)}
-                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold text-xs rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs border border-blue-200/90"
-                      >
-                        <Shield className="w-3.5 h-3.5" />
-                        <span>Edit Hak Akses</span>
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openRbacModal(u)}
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold text-xs rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs border border-blue-200/90"
+                        >
+                          <Shield className="w-3.5 h-3.5" />
+                          <span>Edit Hak Akses</span>
+                        </button>
+                        {canDeleteUser && (
+                          <button
+                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-slate-200 hover:border-rose-300"
+                            title="Hapus Pengguna / Karyawan"
+                          >
+                            <Trash2 className="w-4 h-4 text-rose-600" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -349,6 +382,7 @@ export default function UsersPage() {
                     { key: "tasks.submit", label: "tasks.submit (Submit Bukti)" },
                     { key: "tasks.review", label: "tasks.review (Review Atasan)" },
                     { key: "users.manage", label: "users.manage (Kelola User)" },
+                    { key: "users.delete", label: "users.delete (Hapus Karyawan)" },
                     { key: "evaluations.create", label: "evaluations.create (Evaluasi)" },
                     { key: "divisions.manage", label: "divisions.manage (Divisi)" },
                   ].map((perm) => {

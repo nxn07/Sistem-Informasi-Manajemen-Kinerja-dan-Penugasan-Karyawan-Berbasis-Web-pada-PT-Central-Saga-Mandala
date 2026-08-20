@@ -54,6 +54,7 @@ Tabel di bawah ini menjelaskan hak akses bawaan dan izin khusus (*Custom Permiss
 | **`evaluations.create`** | Mengisi slider KPI & menerbitkan evaluasi bulanan | ❌ Tidak | 🟢 Ya | 🟢 Ya |
 | **`evaluations.view_own`** | Melihat kartu skor evaluasi mandiri (*Private Mode*) | 🟢 Ya | 🟢 Ya | 🟢 Ya |
 | **`users.manage`** | Buka menu & edit modal Spatie RBAC `/users` | ❌ Tidak | ❌ Tidak | 🟢 Ya |
+| **`users.delete`** | Menghapus data akun karyawan / pengguna dari sistem | ❌ Tidak | ⚪ *(Izin Khusus)* | 🟢 Ya |
 | **`divisions.manage`** | Mengelola master data divisi & departemen | ❌ Tidak | ❌ Tidak | 🟢 Ya |
 | **`kpis.manage`** | Mengatur kriteria & bobot persentase KPI (100%) | ❌ Tidak | ❌ Tidak | 🟢 Ya |
 | **`logs.view`** | Melihat riwayat audit log aktivitas sistem | ❌ Tidak | ❌ Tidak | 🟢 Ya |
@@ -84,8 +85,12 @@ Alur resmi siklus pengerjaan tugas di Central Saga:
    * Karyawan dapat beralih antara **`[ 👤 Tugas Saya Saja ]`** dan **`[ 👥 Semua Tugas Tim ]`**.
    * Tugas rekan tim lain diproteksi secara otomatis dengan badge **`🔒 Tugas Rekan Tim`**.
 
-3. **Izin Khusus Real-time (Spatie RBAC Override)**:
-   * Apabila Admin mengaktifkan centang **`tasks.create`** untuk seorang Employee (misal: Sarah Jenkins) di menu `/users`, tombol **`+ Assign New Task`** akan **langsung muncul di header tanpa perlu mengubah jabatannya menjadi Manager**.
+3. **Manajemen Hapus Karyawan & Delegasi RBAC (`users.delete`)**:
+   * Admin memiliki wewenang penuh untuk menghapus data akun karyawan secara real-time via tombol sampah (`Trash2`).
+   * Admin juga dapat mendelegasikan izin `users.delete` kepada Manager tertentu melalui modal **Edit Hak Akses Spatie RBAC**.
+
+4. **Desain Eksekutif Mewah & Garis Tabel Tegas (`Executive UI System`)**:
+   * Seluruh tabel dilapisi **Header Gradasi Navy (`from-slate-900 via-blue-950 to-slate-900 text-white`)**, kolom **`NO.`** (`01`, `02`, `03`), garis pembatas sel tegas 1px (`border-r border-slate-300` & `divide-y divide-slate-300`), bar pencarian melayang tunggal (*Sleek Floating Toolbar*), serta animasi saklar **Sliding Pill 300ms**.
 
 ---
 
