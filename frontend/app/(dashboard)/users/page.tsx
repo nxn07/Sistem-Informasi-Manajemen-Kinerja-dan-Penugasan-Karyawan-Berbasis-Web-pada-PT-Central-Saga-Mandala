@@ -158,14 +158,19 @@ export default function UsersPage() {
     if (confirm(`Apakah Anda yakin ingin menghapus pengguna '${name}' dari sistem?`)) {
       try {
         await userService.delete(id);
-      } catch {
-        // ignore
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+        setToast({
+          type: "success",
+          message: `Pengguna/Karyawan '${name}' berhasil dihapus dari sistem!`,
+        });
+      } catch (error: any) {
+        console.error("Gagal menghapus pengguna dari sistem:", error);
+        const errMsg = error?.response?.data?.message || "Gagal menghapus pengguna dari sistem. Silakan coba lagi.";
+        setToast({
+          type: "error",
+          message: errMsg,
+        });
       }
-      setUsers((prev) => prev.filter((u) => u.id !== id));
-      setToast({
-        type: "success",
-        message: `Pengguna/Karyawan '${name}' berhasil dihapus dari sistem!`,
-      });
     }
   };
 

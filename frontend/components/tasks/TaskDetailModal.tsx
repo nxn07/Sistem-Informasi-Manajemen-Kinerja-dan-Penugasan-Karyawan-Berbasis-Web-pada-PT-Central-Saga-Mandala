@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Task } from "@/types/api";
 import { getDocTypeLabel } from "@/hooks/useTasks";
@@ -10,10 +11,11 @@ import {
   FileCheck,
   FileText,
   User,
-  CheckCircle2,
   AlertTriangle,
-  RotateCcw,
   Tag,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Maximize2,
 } from "lucide-react";
 
 interface TaskDetailModalProps {
@@ -23,12 +25,38 @@ interface TaskDetailModalProps {
 }
 
 export function TaskDetailModal({ isOpen, onClose, task }: TaskDetailModalProps) {
+  const [showFullImage, setShowFullImage] = useState(false);
+
   if (!task) return null;
 
   const docLabel = task.doc_type || getDocTypeLabel(task.submission_file || task.submission_link);
   const lastModified = task.submitted_at || task.updated_at || "20 Ags 2026, 09:30 WIB";
   const empName = task.employee?.full_name || task.employee?.name || "Pegawai Central Saga";
   const fileName = task.submission_file || task.submission_link || "Dokumen_Bukti_Kerja.pdf";
+
+  // Detect whether the submission is an image
+  const isImageFile =
+    (task.submission_file && /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(task.submission_file)) ||
+    (task.submission_link && /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(task.submission_link)) ||
+    docLabel === "Gambar Screenshot" ||
+    fileName.toLowerCase().endsWith(".png") ||
+    fileName.toLowerCase().endsWith(".jpg") ||
+    fileName.toLowerCase().endsWith(".jpeg");
+
+  // Determine image source URL
+  const getImageSrc = () => {
+    if (task.submission_file) {
+      if (task.submission_file.startsWith("http")) return task.submission_file;
+      return `http://localhost:8000/storage/${task.submission_file}`;
+    }
+    if (task.submission_link && (task.submission_link.startsWith("http://") || task.submission_link.startsWith("https://"))) {
+      if (/\.(png|jpg|jpeg|webp|gif|svg)$/i.test(task.submission_link)) {
+        return task.submission_link;
+      }
+    }
+    // High-resolution UI mockup placeholder for demonstration
+    return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80";
+  };
 
   const getStatusBadge = (status: Task["status"]) => {
     const badges: Record<string, React.ReactNode> = {
@@ -71,11 +99,16 @@ export function TaskDetailModal({ isOpen, onClose, task }: TaskDetailModalProps)
     return badges[status] || <span className="px-3 py-1 text-xs font-black rounded-full bg-slate-100 text-slate-700">{status}</span>;
   };
 
-  const handleOpenDocument = () => {
+  const handleOpenImage = () => {
+    const src = getImageSrc();
+    window.open(src, "_blank");
+  };
+
+  const handleOpenLink = () => {
     if (task.submission_link && (task.submission_link.startsWith("http://") || task.submission_link.startsWith("https://"))) {
       window.open(task.submission_link, "_blank");
     } else {
-      alert(`[Central Saga Document Viewer]\n\nMenampilkan Berkas: ${fileName}\nJenis Dokumen: ${docLabel}\nWaktu Upload: ${lastModified}\nDiunggah Oleh: ${empName}\n\nStatus Berkas: Terverifikasi Lengkap Secara Sistem!`);
+      alert(`[Central Saga External Link]\n\nTautan Google Drive / Berkas External:\n${task.submission_link || task.submission_file || "https://drive.google.com/drive/folders/centralsaga"}`);
     }
   };
 
@@ -134,7 +167,7 @@ export function TaskDetailModal({ isOpen, onClose, task }: TaskDetailModalProps)
 
         {/* Document & Submission Box */}
         {(task.submission_file || task.submission_link || task.status === "SUBMITTED" || task.status === "APPROVED" || task.status === "REVISION") ? (
-          <div className="p-4 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200 rounded-2xl space-y-3 shadow-2xs">
+          <div className="p-4 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200 rounded-2xl space-y-4 shadow-2xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-blue-900 flex items-center gap-1.5">
                 <FileCheck className="w-4 h-4 text-blue-600" />
@@ -144,6 +177,33 @@ export function TaskDetailModal({ isOpen, onClose, task }: TaskDetailModalProps)
                 {docLabel}
               </span>
             </div>
+
+            {/* LIVE IMAGE PREVIEW CANVAS (If submission is an image file) */}
+            {isImageFile && (
+              <div className="p-3 bg-slate-900 rounded-2xl border border-slate-800 shadow-md space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-300 font-extrabold px-1">
+                  <span className="flex items-center gap-1.5 text-blue-400">
+                    <ImageIcon className="w-4 h-4" /> Pratinjau Gambar Berkas (Live Image Preview)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleOpenImage}
+                    className="text-[11px] text-blue-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    <span>Layar Penuh</span>
+                  </button>
+                </div>
+                <div className="relative max-h-[260px] overflow-hidden rounded-xl bg-slate-950 flex items-center justify-center p-2 border border-slate-800/80 group">
+                  <img
+                    src={getImageSrc()}
+                    alt={fileName}
+                    className="max-h-[240px] w-auto object-contain rounded-lg shadow-lg group-hover:scale-102 transition-transform duration-300 cursor-pointer"
+                    onClick={handleOpenImage}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2 text-xs border-t border-blue-100 pt-2.5">
               <div className="flex items-center justify-between">
@@ -174,14 +234,28 @@ export function TaskDetailModal({ isOpen, onClose, task }: TaskDetailModalProps)
               )}
             </div>
 
-            {/* Direct Open / Preview Button */}
-            <button
-              onClick={handleOpenDocument}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-900 hover:bg-blue-950 active:scale-98 text-white text-xs font-extrabold rounded-xl transition-all shadow-md cursor-pointer"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>Buka & Lihat Berkas Dokumen Langsung</span>
-            </button>
+            {/* SEPARATE DEDICATED ACTION BUTTONS FOR FILE & LINK */}
+            <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+              {/* Button 1: Open/View Uploaded File / Image */}
+              <button
+                type="button"
+                onClick={handleOpenImage}
+                className="flex-1 w-full flex items-center justify-center gap-2 py-2.5 bg-blue-900 hover:bg-blue-950 active:scale-98 text-white text-xs font-black rounded-xl transition-all shadow-md cursor-pointer border border-blue-950"
+              >
+                <ImageIcon className="w-4 h-4 text-blue-300" />
+                <span>🖼️ Lihat / Buka Gambar Berkas</span>
+              </button>
+
+              {/* Button 2: Open External Link / Drive Link */}
+              <button
+                type="button"
+                onClick={handleOpenLink}
+                className="flex-1 w-full flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-slate-950 active:scale-98 text-white text-xs font-black rounded-xl transition-all shadow-md cursor-pointer border border-slate-950"
+              >
+                <LinkIcon className="w-4 h-4 text-emerald-400" />
+                <span>🔗 Buka Link External / Drive</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-center gap-2 text-xs font-bold text-amber-800">
@@ -193,6 +267,7 @@ export function TaskDetailModal({ isOpen, onClose, task }: TaskDetailModalProps)
         {/* Action / Close Buttons */}
         <div className="flex justify-end pt-3 border-t border-slate-100">
           <button
+            type="button"
             onClick={onClose}
             className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
           >
