@@ -1,45 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toast } from "@/components/ui/Toast";
+import { kpiService } from "@/services/kpi-service";
+import { KpiCriteria } from "@/types/api";
 import { Target, Plus, PieChart, X, Edit3, Trash2 } from "lucide-react";
 
-interface KpiItem {
-  id: number;
-  name: string;
-  weight_percentage: number;
-  description: string;
-}
-
 export default function KpiPage() {
-  const [kpiList, setKpiList] = useState<KpiItem[]>([
-    {
-      id: 1,
-      name: "Kedisiplinan & Ketepatan Waktu",
-      weight_percentage: 25,
-      description: "Tingkat kehadiran, kehadiran rapat, dan kepatuhan jam kerja.",
-    },
-    {
-      id: 2,
-      name: "Kualitas Hasil Kerja (Quality of Deliverables)",
-      weight_percentage: 30,
-      description: "Ketetapan standar mutu output pekerjaan dan keakuratan data/kode.",
-    },
-    {
-      id: 3,
-      name: "Kerjasama Tim & Komunikasi",
-      weight_percentage: 25,
-      description: "Kolaborasi antar departemen, responsivitas, dan komunikasi efektif.",
-    },
-    {
-      id: 4,
-      name: "Inisiatif & Inovasi Kerja",
-      weight_percentage: 20,
-      description: "Proaktif mengajukan ide perbaikan proses kerja dan solusi problem-solving.",
-    },
-  ]);
-
-  const [selectedKpiForEdit, setSelectedKpiForEdit] = useState<KpiItem | null>(null);
+  const [kpiList, setKpiList] = useState<KpiCriteria[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedKpiForEdit, setSelectedKpiForEdit] = useState<KpiCriteria | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // Form State
@@ -55,63 +25,107 @@ export default function KpiPage() {
     message: null,
   });
 
-  const totalWeight = kpiList.reduce((acc, k) => acc + k.weight_percentage, 0);
-
-  const handleOpenEdit = (item: KpiItem) => {
-    setSelectedKpiForEdit(item);
-    setNameInput(item.name);
-    setWeightInput(item.weight_percentage);
-    setDescriptionInput(item.description);
+  const loadKpiData = async () => {
+    try {
+      setLoading(true);
+      const data = await kpiService.getAll();
+      setKpiList(data);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadKpiData();
+  }, []);
+
+  const totalWeight = kpiList.reduce((acc, k) => acc + (k.weight_percentage || k.weight || 0), 0);
+
+  const handleOpenEdit = (item: KpiCriteria) => {
+    setSelectedKpiForEdit(item);
+    setNameInput(item.criteria_name || item.name || "");
+    setWeightInput(item.weight_percentage || item.weight || 20);
+    setDescriptionInput(item.description || "");
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedKpiForEdit) return;
 
-    setKpiList((prev) =>
-      prev.map((k) =>
-        k.id === selectedKpiForEdit.id
-          ? { ...k, name: nameInput, weight_percentage: Number(weightInput), description: descriptionInput }
-          : k
-      )
-    );
+    try {
+      const updated = await kpiService.update(selectedKpiForEdit.id, {
+        criteria_name: nameInput,
+        name: nameInput,
+        weight_percentage: Number(weightInput),
+        weight: Number(weightInput),
+        description: descriptionInput,
+      });
 
-    setSelectedKpiForEdit(null);
-    setToast({
-      type: "success",
-      message: `Indikator KPI '${nameInput}' berhasil diperbarui!`,
-    });
+      setKpiList((prev) =>
+        prev.map((k) => (k.id === selectedKpiForEdit.id ? updated : k))
+      );
+
+      setSelectedKpiForEdit(null);
+      setToast({
+        type: "success",
+        message: `Indikator KPI '${nameInput}' berhasil diperbarui!`,
+      });
+    } catch {
+      setToast({
+        type: "error",
+        message: `Gagal mengedit KPI.`,
+      });
+    }
   };
 
-  const handleCreateKpi = (e: React.FormEvent) => {
+  const handleCreateKpi = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameInput) return;
 
-    const newKpi: KpiItem = {
-      id: Date.now(),
-      name: nameInput,
-      weight_percentage: Number(weightInput),
-      description: descriptionInput || "Indikator kinerja utama departemen Central Saga.",
-    };
+    try {
+      const created = await kpiService.create({
+        criteria_name: nameInput,
+        name: nameInput,
+        weight_percentage: Number(weightInput),
+        weight: Number(weightInput),
+        description: descriptionInput || "Indikator kinerja utama departemen Central Saga.",
+      });
 
-    setKpiList((prev) => [...prev, newKpi]);
-    setIsCreateOpen(false);
-    setNameInput("");
-    setWeightInput(15);
-    setDescriptionInput("");
-    setToast({
-      type: "success",
-      message: `Indikator KPI baru '${nameInput}' berhasil ditambahkan!`,
-    });
-  };
-
-  const handleDeleteKpi = (id: number, name: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus indikator KPI ${name}?`)) {
-      setKpiList((prev) => prev.filter((k) => k.id !== id));
+      setKpiList((prev) => [...prev, created]);
+      setIsCreateOpen(false);
+      setNameInput("");
+      setWeightInput(15);
+      setDescriptionInput("");
       setToast({
         type: "success",
-        message: `Indikator KPI '${name}' berhasil dihapus!`,
+        message: `Indikator KPI baru '${nameInput}' berhasil ditambahkan!`,
       });
+    } catch {
+      setToast({
+        type: "error",
+        message: "Gagal membuat indikator KPI baru.",
+      });
+    }
+  };
+
+  const handleDeleteKpi = async (id: number, name?: string) => {
+    const displayName = name || "Kriteria";
+    if (confirm(`Apakah Anda yakin ingin menghapus indikator KPI ${displayName}?`)) {
+      try {
+        await kpiService.delete(id);
+        setKpiList((prev) => prev.filter((k) => k.id !== id));
+        setToast({
+          type: "success",
+          message: `Indikator KPI '${displayName}' berhasil dihapus!`,
+        });
+      } catch {
+        setToast({
+          type: "error",
+          message: `Gagal menghapus KPI '${displayName}'.`,
+        });
+      }
     }
   };
 
@@ -179,43 +193,48 @@ export default function KpiPage() {
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {kpiList.map((item) => (
-          <div
-            key={item.id}
-            className="p-5 bg-white border border-slate-200/80 rounded-2xl shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="px-3 py-1 text-xs font-extrabold bg-purple-50 text-purple-700 border border-purple-200/80 rounded-full">
-                  Bobot: {item.weight_percentage}%
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleOpenEdit(item)}
-                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                    title="Edit KPI"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteKpi(item.id, item.name)}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                    title="Hapus KPI"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+        {kpiList.map((item) => {
+          const displayName = item.criteria_name || item.name || "Kriteria";
+          const displayWeight = item.weight_percentage || item.weight || 0;
+
+          return (
+            <div
+              key={item.id}
+              className="p-5 bg-white border border-slate-200/80 rounded-2xl shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="px-3 py-1 text-xs font-extrabold bg-purple-50 text-purple-700 border border-purple-200/80 rounded-full">
+                    Bobot: {displayWeight}%
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleOpenEdit(item)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      title="Edit KPI"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteKpi(item.id, displayName)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="Hapus KPI"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
+                <h3 className="text-base font-bold text-slate-900 mb-1 flex items-center gap-2 group-hover:text-purple-700 transition-colors">
+                  <Target className="w-4 h-4 text-purple-600 shrink-0" />
+                  <span>{displayName}</span>
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {item.description || "Penjelasan detail indikator penilaian."}
+                </p>
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-1 flex items-center gap-2 group-hover:text-purple-700 transition-colors">
-                <Target className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>{item.name}</span>
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                {item.description}
-              </p>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Modal Popup: Tambah / Edit Kriteria KPI */}

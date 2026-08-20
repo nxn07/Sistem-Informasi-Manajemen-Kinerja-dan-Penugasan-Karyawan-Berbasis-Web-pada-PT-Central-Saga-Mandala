@@ -84,6 +84,12 @@ export interface Task {
   employee?: Employee;
   division?: Division;
   submissions?: TaskSubmission[];
+  submission_file?: string | null;
+  submission_link?: string | null;
+  submission_notes?: string | null;
+  submitted_at?: string | null;
+  updated_at?: string | null;
+  doc_type?: string | null;
 }
 
 export interface PerformanceEvaluation {

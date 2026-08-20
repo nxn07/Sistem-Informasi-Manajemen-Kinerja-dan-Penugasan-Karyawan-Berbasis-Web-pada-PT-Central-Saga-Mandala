@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { authService } from "@/services/auth-service";
 import { Toast } from "@/components/ui/Toast";
-import { Mail, Lock, Loader2, Sparkles } from "lucide-react";
+import { Mail, Lock, Loader2 } from "lucide-react";
+import centralSagaLogo from "@/public/central-saga-logo.png";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,11 +61,11 @@ export default function LoginPage() {
         onClose={() => setToast({ ...toast, message: null })}
       />
 
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-200/80 p-8 relative z-10 backdrop-blur-sm space-y-6">
+      <div className="max-w-md w-full bg-white/95 backdrop-blur-xl rounded-[2.5rem] p-9 relative z-10 border border-slate-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.14),0_0_35px_rgba(16,185,129,0.12)] hover:shadow-[0_25px_60px_rgba(0,0,0,0.18),0_0_45px_rgba(16,185,129,0.18)] transition-all duration-300 space-y-6">
         {/* Brand Header with Official Central Saga Green Logo & Name */}
         <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-white p-2 flex items-center justify-center border border-emerald-500/30 mx-auto mb-3 shadow-md">
-            <img src="/central-saga-logo.png" alt="Central Saga" className="w-full h-full object-contain" />
+          <div className="w-20 h-20 rounded-3xl bg-white p-3.5 flex items-center justify-center border-2 border-emerald-500/40 mx-auto mb-4 shadow-xl shadow-emerald-500/15 ring-4 ring-emerald-500/10 hover:scale-105 hover:shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300">
+            <Image src={centralSagaLogo} alt="Central Saga" className="w-full h-full object-contain drop-shadow-xs" />
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             Central Saga

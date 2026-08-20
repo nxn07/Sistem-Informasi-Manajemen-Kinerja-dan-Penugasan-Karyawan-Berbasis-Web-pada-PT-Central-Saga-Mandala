@@ -16,6 +16,8 @@ import {
   Calendar,
   Sparkles,
 } from "lucide-react";
+import Image from "next/image";
+import centralSagaLogo from "@/public/central-saga-logo.png";
 
 export default function DashboardOverviewPage() {
   const [toast, setToast] = useState<{
@@ -48,17 +50,22 @@ export default function DashboardOverviewPage() {
         <div className="absolute -bottom-16 left-1/3 w-64 h-64 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-blue-200 mb-3 border border-white/15 shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5 text-blue-300 animate-pulse" />
-              <span>Central Saga Enterprise Audit v2.0</span>
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white p-1.5 flex items-center justify-center shrink-0 border border-emerald-400/40 shadow-lg">
+              <Image src={centralSagaLogo} alt="Central Saga" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white drop-shadow-xs">
-              Dashboard Overview — <span className="text-emerald-400">Central Saga</span>
-            </h1>
-            <p className="text-xs md:text-sm text-blue-200/90 mt-1.5 max-w-xl font-medium leading-relaxed">
-              Ringkasan produktivitas, matriks pencapaian tugas, dan skor kriteria KPI pegawai secara real-time.
-            </p>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-blue-200 mb-2 border border-white/15 shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-blue-300 animate-pulse" />
+                <span>Central Saga Enterprise Audit v2.0</span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white drop-shadow-xs">
+                Dashboard Overview — <span className="text-emerald-400">Central Saga</span>
+              </h1>
+              <p className="text-xs md:text-sm text-blue-200/90 mt-1 max-w-xl font-medium leading-relaxed">
+                Ringkasan produktivitas, matriks pencapaian tugas, dan skor kriteria KPI pegawai secara real-time.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">

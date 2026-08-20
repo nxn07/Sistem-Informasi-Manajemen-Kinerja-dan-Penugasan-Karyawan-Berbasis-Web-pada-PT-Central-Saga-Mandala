@@ -1,83 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { userService } from "@/services/user-service";
+import { User } from "@/types/api";
 import { Toast } from "@/components/ui/Toast";
+import Cookies from "js-cookie";
 import {
-  Users as UsersIcon,
-  Plus,
   Search,
-  Filter,
   Shield,
-  Key,
-  CheckCircle2,
-  AlertOctagon,
+  Loader2,
+  Check,
   X,
-  Lock,
-  UserCheck,
+  UserPlus,
+  Key,
 } from "lucide-react";
 
-interface UserItem {
-  id: number;
-  name: string;
-  email: string;
-  position: string;
-  role: "ADMIN" | "MANAGER" | "EMPLOYEE";
-  permissions: string[];
-}
-
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserItem[]>([
-    {
-      id: 1,
-      name: "Admin System",
-      email: "admin@gmail.com",
-      position: "System Administrator",
-      role: "ADMIN",
-      permissions: ["tasks.create", "tasks.submit", "tasks.review", "users.manage"],
-    },
-    {
-      id: 2,
-      name: "Manager Utama",
-      email: "manager@gmail.com",
-      position: "Head of IT Division",
-      role: "MANAGER",
-      permissions: ["tasks.create", "tasks.review", "evaluations.create"],
-    },
-    {
-      id: 3,
-      name: "Sarah Jenkins",
-      email: "sarah@gmail.com",
-      position: "Finance Specialist",
-      role: "EMPLOYEE",
-      permissions: ["tasks.submit", "evaluations.view_own"],
-    },
-    {
-      id: 4,
-      name: "Michael Ross",
-      email: "michael@gmail.com",
-      position: "IT Operations",
-      role: "EMPLOYEE",
-      permissions: ["tasks.submit", "evaluations.view_own"],
-    },
-    {
-      id: 5,
-      name: "Natalie McDermott",
-      email: "natalie@gmail.com",
-      position: "UI/UX Designer",
-      role: "EMPLOYEE",
-      permissions: ["tasks.submit", "evaluations.view_own"],
-    },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState("ALL");
-
-  // Selected User for RBAC Permission Modal
-  const [selectedUserForRbac, setSelectedUserForRbac] = useState<UserItem | null>(null);
-  const [editedRole, setEditedRole] = useState<"ADMIN" | "MANAGER" | "EMPLOYEE">("EMPLOYEE");
+  // Modal Control States
+  const [selectedUserForRbac, setSelectedUserForRbac] = useState<User | null>(null);
+  const [editedRole, setEditedRole] = useState<string>("EMPLOYEE");
   const [editedPermissions, setEditedPermissions] = useState<string[]>([]);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  // Toast & Error States
+  // New User Form State
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newRole, setNewRole] = useState("EMPLOYEE");
+
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string | null;
@@ -86,24 +39,29 @@ export default function UsersPage() {
     message: null,
   });
 
-  const [hasPermissionError, setHasPermissionError] = useState(false);
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await userService.getAll();
+      setUsers(data);
+    } catch {
+      setToast({
+        type: "error",
+        message: "Gagal memuat daftar pengguna.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const filteredUsers = users.filter((u) => {
-    const matchesSearch =
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.position.toLowerCase().includes(searchQuery.toLowerCase());
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
-    const matchesRole =
-      selectedRoleFilter === "ALL" || u.role === selectedRoleFilter;
-
-    return matchesSearch && matchesRole;
-  });
-
-  const openRbacModal = (userItem: UserItem) => {
+  const openRbacModal = (userItem: User) => {
     setSelectedUserForRbac(userItem);
-    setEditedRole(userItem.role);
-    setEditedPermissions(userItem.permissions);
+    setEditedRole(userItem.role || userItem.roles?.[0] || "EMPLOYEE");
+    setEditedPermissions(userItem.permissions || ["tasks.submit"]);
   };
 
   const handleTogglePermission = (permissionKey: string) => {
@@ -114,45 +72,109 @@ export default function UsersPage() {
     );
   };
 
-  const handleSaveRbac = () => {
+  const handleSaveRbac = async () => {
     if (!selectedUserForRbac) return;
 
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === selectedUserForRbac.id
-          ? { ...u, role: editedRole, permissions: editedPermissions }
-          : u
-      )
-    );
+    try {
+      const updatedUser = await userService.update(selectedUserForRbac.id, {
+        role: editedRole,
+        roles: [editedRole],
+        permissions: editedPermissions,
+      });
 
-    setSelectedUserForRbac(null);
-    setToast({
-      type: "success",
-      message: `Peran pengguna (${editedRole}) & Hak Akses Spatie RBAC berhasil disimpan oleh Administrator Central Saga!`,
-    });
+      // Update current logged in user cookie if editing logged-in user
+      const currentUserCookie = Cookies.get("simkap_user");
+      if (currentUserCookie) {
+        try {
+          const parsed = JSON.parse(currentUserCookie);
+          if (parsed.email === selectedUserForRbac.email || parsed.id === selectedUserForRbac.id) {
+            const merged = { ...parsed, role: editedRole, roles: [editedRole], permissions: editedPermissions };
+            Cookies.set("simkap_user", JSON.stringify(merged), { expires: 7 });
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === selectedUserForRbac.id
+            ? { ...u, role: editedRole, roles: [editedRole], permissions: editedPermissions }
+            : u
+        )
+      );
+
+      setSelectedUserForRbac(null);
+      setToast({
+        type: "success",
+        message: `Hak Akses & Role (${editedRole}) Berhasil Diperbarui untuk ${selectedUserForRbac.name}! (Izin: ${editedPermissions.join(", ")})`,
+      });
+    } catch {
+      setToast({
+        type: "error",
+        message: `Gagal memperbarui role Spatie RBAC.`,
+      });
+    }
   };
 
-  const getRoleBadge = (role: UserItem["role"]) => {
-    if (role === "ADMIN") {
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName || !newEmail) return;
+
+    try {
+      const created = await userService.create({
+        name: newName,
+        email: newEmail,
+        role: newRole,
+        roles: [newRole],
+        permissions: newRole === "ADMIN" ? ["*"] : newRole === "MANAGER" ? ["tasks.create", "tasks.review"] : ["tasks.submit", "tasks.create"],
+      });
+
+      setUsers((prev) => [created, ...prev.filter((u) => u.id !== created.id)]);
+      setIsCreateOpen(false);
+      setNewName("");
+      setNewEmail("");
+      setToast({
+        type: "success",
+        message: `User baru '${newName}' (${newRole}) berhasil didaftarkan!`,
+      });
+    } catch {
+      setToast({
+        type: "error",
+        message: "Gagal mendaftarkan user baru.",
+      });
+    }
+  };
+
+  const getRoleBadge = (roleName?: string) => {
+    const r = (roleName || "EMPLOYEE").toUpperCase();
+    if (r === "ADMIN") {
       return (
-        <span className="px-2.5 py-0.5 text-[11px] font-extrabold rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+        <span className="px-2.5 py-0.5 text-[11px] font-extrabold rounded-full bg-rose-100 text-rose-800 border border-rose-300">
           ADMIN
         </span>
       );
-    } else if (role === "MANAGER") {
+    } else if (r === "MANAGER") {
       return (
-        <span className="px-2.5 py-0.5 text-[11px] font-extrabold rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+        <span className="px-2.5 py-0.5 text-[11px] font-extrabold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
           MANAGER
         </span>
       );
     } else {
       return (
-        <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+        <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-slate-100 text-slate-700 border border-slate-300">
           EMPLOYEE
         </span>
       );
     }
   };
+
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      (u.role || "").toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -163,135 +185,117 @@ export default function UsersPage() {
         onClose={() => setToast({ ...toast, message: null })}
       />
 
-      {/* Access Denied (403) Banner Warning */}
-      {hasPermissionError && (
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between shadow-2xs">
-          <div className="flex items-center gap-3">
-            <AlertOctagon className="w-5 h-5 text-rose-600 shrink-0" />
-            <span className="text-xs font-bold">
-              Akses Ditolak: Anda tidak memiliki permission &apos;users.manage&apos; (403 Forbidden)!
-            </span>
-          </div>
-          <button
-            onClick={() => setHasPermissionError(false)}
-            className="p-1 hover:bg-rose-100 rounded-lg text-rose-600"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Manajemen Pengguna & Hak Akses Central Saga
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Pengelolaan akun pengguna, peran (Roles), dan izin akses Spatie RBAC.
+            Pengaturan akun pengguna, peran (Role), dan izin khusus Spatie RBAC.
           </p>
         </div>
 
         <button
-          onClick={() =>
-            setToast({
-              type: "success",
-              message: "Form pendaftaran pegawai baru dibuka!",
-            })
-          }
+          onClick={() => setIsCreateOpen(true)}
           className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-900 hover:bg-blue-950 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
         >
-          <Plus className="w-4 h-4" />
+          <UserPlus className="w-4 h-4" />
           <span>+ Tambah Pengguna Baru</span>
         </button>
       </div>
 
-      {/* Toolbar Search & Role Filter */}
-      <div className="p-3 bg-white border border-slate-200/80 rounded-2xl shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* Toolbar Search */}
+      <div className="p-3 bg-white border border-slate-200/80 rounded-2xl shadow-2xs flex items-center justify-between gap-3">
         <div className="relative flex-1 w-full max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nama, email, atau jabatan pegawai..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari nama atau email pengguna..."
             className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-slate-50/50"
           />
         </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-            <select
-              value={selectedRoleFilter}
-              onChange={(e) => setSelectedRoleFilter(e.target.value)}
-              className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white font-semibold text-slate-700"
-            >
-              <option value="ALL">Semua Role</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="MANAGER">MANAGER</option>
-              <option value="EMPLOYEE">EMPLOYEE</option>
-            </select>
-          </div>
-          <span className="text-xs font-semibold text-slate-400">
-            Showing {filteredUsers.length} users
-          </span>
-        </div>
+        <span className="text-xs font-semibold text-slate-400">
+          Total {filteredUsers.length} Users
+        </span>
       </div>
 
-      {/* Data Table View */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="py-3.5 px-4">PENGGUNA</th>
-                <th className="py-3.5 px-4">EMAIL</th>
-                <th className="py-3.5 px-4">JABATAN</th>
-                <th className="py-3.5 px-4">ROLE AKSES SPATIE</th>
-                <th className="py-3.5 px-4 text-center">AKSI</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-              {filteredUsers.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-900 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
-                        {u.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900">{u.name}</p>
-                        <p className="text-[11px] text-slate-400">{u.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-slate-600 font-medium">{u.email}</td>
-                  <td className="py-4 px-4 text-slate-800 font-semibold">{u.position}</td>
-                  <td className="py-4 px-4">{getRoleBadge(u.role)}</td>
-                  <td className="py-4 px-4 text-center">
-                    <button
-                      onClick={() => openRbacModal(u)}
-                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 text-xs font-bold rounded-xl transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
-                    >
-                      <Shield className="w-3.5 h-3.5" />
-                      <span>Edit Role Spatie</span>
-                    </button>
-                  </td>
+      {/* Users Table (Clean Subtle Borders) */}
+      {loading ? (
+        <div className="py-12 flex flex-col items-center justify-center space-y-3 bg-white border border-slate-200/80 rounded-2xl">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <p className="text-xs font-semibold text-slate-500">Memuat data pengguna...</p>
+        </div>
+      ) : (
+        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 w-12 border-r border-slate-200/60 text-center">#</th>
+                  <th className="py-3.5 px-4 border-r border-slate-200/60">PENGGUNA</th>
+                  <th className="py-3.5 px-4 border-r border-slate-200/60">ROLE</th>
+                  <th className="py-3.5 px-4 border-r border-slate-200/60">PERMISSIONS SPESIFIK</th>
+                  <th className="py-3.5 px-4 text-center">AKSI SPATIE RBAC</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                {filteredUsers.map((u, idx) => (
+                  <tr key={u.id} className="even:bg-slate-50/50 hover:bg-slate-50/90 transition-colors">
+                    <td className="py-4 px-4 text-slate-400 font-bold border-r border-slate-100 text-center">
+                      {String(idx + 1).padStart(2, "0")}
+                    </td>
+                    <td className="py-4 px-4 border-r border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-900 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                          {u.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-extrabold text-slate-900">{u.name}</p>
+                          <p className="text-[11px] text-slate-400">{u.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 border-r border-slate-100">{getRoleBadge(u.role || u.roles?.[0])}</td>
+                    <td className="py-4 px-4 border-r border-slate-100">
+                      <div className="flex flex-wrap gap-1">
+                        {(u.permissions && u.permissions.length > 0) ? (
+                          u.permissions.map((p) => (
+                            <span key={p} className="px-1.5 py-0.5 text-[9.5px] font-bold rounded bg-slate-100 text-slate-700 border border-slate-300">
+                              {p}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic">Izin bawaan role</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <button
+                        onClick={() => openRbacModal(u)}
+                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold text-xs rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs border border-blue-200"
+                      >
+                        <Shield className="w-3.5 h-3.5" />
+                        <span>Edit Hak Akses</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Modal Popup: Edit Hak Akses Spatie RBAC */}
+      {/* Modal Edit Hak Akses Spatie RBAC */}
       {selectedUserForRbac && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-lg w-full p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-200">
                   <Shield className="w-5 h-5" />
                 </div>
                 <div>
@@ -305,89 +309,161 @@ export default function UsersPage() {
               </div>
               <button
                 onClick={() => setSelectedUserForRbac(null)}
-                className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"
+                className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Role Selector */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-2">
-                Pilih Role Utama:
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["ADMIN", "MANAGER", "EMPLOYEE"] as const).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setEditedRole(r)}
-                    className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                      editedRole === r
-                        ? "bg-blue-900 text-white border-blue-900 shadow-sm"
-                        : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Permissions Checkbox Grid */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-2">
-                Izin Akses Spesifik (Permissions):
-              </label>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {[
-                  { key: "tasks.create", label: "tasks.create (Buat Tugas)" },
-                  { key: "tasks.submit", label: "tasks.submit (Submit Bukti)" },
-                  { key: "tasks.review", label: "tasks.review (Review Atasan)" },
-                  { key: "users.manage", label: "users.manage (Kelola User)" },
-                  { key: "evaluations.create", label: "evaluations.create" },
-                  { key: "divisions.manage", label: "divisions.manage" },
-                ].map((perm) => {
-                  const isChecked = editedPermissions.includes(perm.key);
-                  return (
-                    <div
-                      key={perm.key}
-                      onClick={() => handleTogglePermission(perm.key)}
-                      className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                        isChecked
-                          ? "bg-blue-50/80 border-blue-300 text-blue-900 font-bold"
-                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+            <div className="space-y-4 text-xs font-medium">
+              <div>
+                <label className="block font-bold text-slate-800 mb-2">Pilih Role Utama:</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["ADMIN", "MANAGER", "EMPLOYEE"].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setEditedRole(r)}
+                      className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+                        editedRole === r
+                          ? "bg-blue-900 text-white border-blue-900 shadow-xs"
+                          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                       }`}
                     >
-                      <span>{perm.label}</span>
-                      <div
-                        className={`w-4 h-4 rounded flex items-center justify-center text-white text-[10px] ${
-                          isChecked ? "bg-blue-600" : "border border-slate-300 bg-white"
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-2 flex items-center gap-1">
+                  <Key className="w-3.5 h-3.5 text-blue-600" />
+                  Izin Akses Spesifik (Permissions):
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: "tasks.create", label: "tasks.create (Buat Tugas)" },
+                    { key: "tasks.submit", label: "tasks.submit (Submit Bukti)" },
+                    { key: "tasks.review", label: "tasks.review (Review Atasan)" },
+                    { key: "users.manage", label: "users.manage (Kelola User)" },
+                    { key: "evaluations.create", label: "evaluations.create (Evaluasi)" },
+                    { key: "divisions.manage", label: "divisions.manage (Divisi)" },
+                  ].map((perm) => {
+                    const isChecked = editedPermissions.includes(perm.key);
+                    return (
+                      <button
+                        key={perm.key}
+                        type="button"
+                        onClick={() => handleTogglePermission(perm.key)}
+                        className={`p-2.5 rounded-xl border text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
+                          isChecked
+                            ? "bg-blue-50/80 border-blue-400 text-blue-900 font-bold"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                         }`}
                       >
-                        {isChecked && "✓"}
-                      </div>
-                    </div>
-                  );
-                })}
+                        <span className="truncate pr-1">{perm.label}</span>
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border ${
+                            isChecked
+                              ? "bg-blue-600 border-blue-600 text-white"
+                              : "bg-white border-slate-300"
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
               <button
+                type="button"
                 onClick={() => setSelectedUserForRbac(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={handleSaveRbac}
-                className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold rounded-xl transition-colors shadow-md cursor-pointer"
+                className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold rounded-xl shadow-md"
               >
                 Simpan Hak Akses
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tambah Pengguna Baru */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-900 text-base">Tambah Pengguna Baru</h3>
+              <button onClick={() => setIsCreateOpen(false)} className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUserSubmit} className="space-y-3 text-xs font-medium">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Lengkap *</label>
+                <input
+                  type="text"
+                  required
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Misal: Sarah Jenkins"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="sarah@gmail.com"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Role Utama *</label>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                >
+                  <option value="EMPLOYEE">EMPLOYEE (Karyawan)</option>
+                  <option value="MANAGER">MANAGER (Atasan)</option>
+                  <option value="ADMIN">ADMIN (Super Admin)</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-900 text-white text-xs font-bold rounded-xl shadow-md"
+                >
+                  Daftarkan User
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

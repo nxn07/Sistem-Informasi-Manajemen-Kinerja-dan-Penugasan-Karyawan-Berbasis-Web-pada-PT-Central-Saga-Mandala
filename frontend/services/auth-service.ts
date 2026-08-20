@@ -1,6 +1,7 @@
 import apiClient from '@/lib/api-client';
 import { ApiResponse, User } from '@/types/api';
 import Cookies from 'js-cookie';
+import { userService } from '@/services/user-service';
 
 export interface LoginPayload {
   email?: string;
@@ -65,19 +66,51 @@ export const authService = {
       }
 
       if (cleanEmail === "employee@gmail.com" || cleanEmail === "sarah@gmail.com") {
+        // Read custom saved permissions from localStorage if updated by Admin in /users
+        let savedPerms = ["tasks.submit", "tasks.create", "evaluations.view_own"];
+        if (typeof window !== "undefined") {
+          try {
+            const raw = localStorage.getItem("simkap_user_perm_3");
+            if (raw) savedPerms = JSON.parse(raw);
+          } catch {
+            // ignore
+          }
+        }
+
         const mockUser: User = {
           id: 3,
           name: "Sarah Jenkins",
           email: "sarah@gmail.com",
           role: "EMPLOYEE",
           roles: ["EMPLOYEE"],
-          permissions: ["tasks.submit", "evaluations.view_own"],
+          permissions: savedPerms,
           created_at: "2026-08-19",
         };
         const mockToken = `demo_token_EMPLOYEE_${Date.now()}`;
         Cookies.set('simkap_token', mockToken, { expires: 7 });
         Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
         return { token: mockToken, user: mockUser };
+      }
+
+      // Check dynamically registered or fallback users from userService
+      try {
+        const allUsers = await userService.getAll();
+        const found = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+        if (found) {
+          const userRole = (found.role || found.roles?.[0] || "EMPLOYEE").toUpperCase();
+          const mockToken = `demo_token_${userRole}_${Date.now()}`;
+          const mockUser: User = {
+            ...found,
+            role: userRole,
+            roles: [userRole],
+            permissions: found.permissions || (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.review"] : ["tasks.submit", "tasks.create"]),
+          };
+          Cookies.set('simkap_token', mockToken, { expires: 7 });
+          Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
+          return { token: mockToken, user: mockUser };
+        }
+      } catch {
+        // ignore
       }
 
       // Invalid email credential error
@@ -102,6 +135,16 @@ export const authService = {
     const cachedUser = this.getCurrentUser();
 
     if (token?.startsWith('demo_') && cachedUser) {
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem(`simkap_user_perm_${cachedUser.id}`);
+          if (raw) {
+            cachedUser.permissions = JSON.parse(raw);
+          }
+        } catch {
+          // ignore
+        }
+      }
       return cachedUser;
     }
 

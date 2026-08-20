@@ -70,8 +70,10 @@ class TaskService implements TaskServiceInterface
         $data['created_by_manager_id'] = $assignedByUserId;
         $data['assigned_employee_id'] = $data['assigned_employee_id'] ?? $data['employee_id'] ?? null;
         $data['deadline'] = $data['deadline'] ?? $data['due_date'] ?? null;
-        $data['weight'] = $data['weight'] ?? $data['weight_score'] ?? null;
+        $data['weight'] = $data['weight'] ?? $data['weight_score'] ?? 5;
         $data['status'] = 'PENDING';
+
+        unset($data['due_date'], $data['weight_score'], $data['employee_id']);
 
         $task = $this->taskRepository->create($data);
         $this->clearCache();

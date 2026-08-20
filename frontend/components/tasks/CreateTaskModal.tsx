@@ -59,12 +59,14 @@ export function CreateTaskModal({
 
   useEffect(() => {
     if (isOpen) {
-      setLoadingUsers(true);
+      setUsers(getFallbackUsers());
+      setLoadingUsers(false);
       userService
         .getAll()
-        .then((data) => setUsers(data && data.length > 0 ? data : getFallbackUsers()))
-        .catch(() => setUsers(getFallbackUsers()))
-        .finally(() => setLoadingUsers(false));
+        .then((data) => {
+          if (data && data.length > 0) setUsers(data);
+        })
+        .catch(() => {});
     } else {
       reset();
       setServerError(null);

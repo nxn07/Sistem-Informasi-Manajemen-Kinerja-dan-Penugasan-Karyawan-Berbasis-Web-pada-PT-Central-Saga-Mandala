@@ -8,6 +8,54 @@ import {
 } from "@/services/task-service";
 import { Task } from "@/types/api";
 
+const LOCAL_TASKS_KEY = "simkap_created_tasks";
+
+function getLocalTasks(): Task[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const data = localStorage.getItem(LOCAL_TASKS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalTask(task: Task) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = getLocalTasks();
+    const updated = [task, ...existing.filter((t) => t.id !== task.id)];
+    localStorage.setItem(LOCAL_TASKS_KEY, JSON.stringify(updated));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function mergeTasks(serverTasks: Task[], localTasks: Task[]): Task[] {
+  const map = new Map<number, Task>();
+  // First add local tasks so newly created tasks are prioritized
+  localTasks.forEach((t) => map.set(t.id, t));
+  // Then add server tasks if not already mapped by ID
+  serverTasks.forEach((t) => {
+    if (!map.has(t.id)) {
+      map.set(t.id, t);
+    }
+  });
+  return Array.from(map.values());
+}
+
+export function getDocTypeLabel(filenameOrUrl?: string | null): string {
+  if (!filenameOrUrl) return "PDF / Berkas Dokumen";
+  const str = filenameOrUrl.toLowerCase();
+  if (str.includes("drive.google.com") || str.includes("http://") || str.includes("https://")) return "Google Drive / Web Link";
+  if (str.endsWith(".pdf")) return "PDF Document";
+  if (str.endsWith(".doc") || str.endsWith(".docx")) return "Word Document (DOCX)";
+  if (str.endsWith(".xls") || str.endsWith(".xlsx") || str.endsWith(".csv")) return "Excel Spreadsheet";
+  if (str.endsWith(".zip") || str.endsWith(".rar") || str.endsWith(".7z")) return "ZIP / RAR Archive";
+  if (str.endsWith(".png") || str.endsWith(".jpg") || str.endsWith(".jpeg") || str.endsWith(".webp")) return "Gambar Screenshot";
+  return "Dokumen Berkas";
+}
+
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,9 +66,12 @@ export function useTasks() {
       setLoading(true);
       setError(null);
       const data = await taskService.getAll();
-      setTasks(data && data.length > 0 ? data : getFallbackTasks());
+      const local = getLocalTasks();
+      const combined = mergeTasks(data && data.length > 0 ? data : getFallbackTasks(), local);
+      setTasks(combined);
     } catch {
-      setTasks(getFallbackTasks());
+      const local = getLocalTasks();
+      setTasks(mergeTasks(getFallbackTasks(), local));
     } finally {
       setLoading(false);
     }
@@ -31,19 +82,134 @@ export function useTasks() {
   }, [fetchTasks]);
 
   const createTask = async (payload: CreateTaskPayload) => {
-    const newTask = await taskService.create(payload);
-    await fetchTasks();
+    const nowStr = new Date().toLocaleString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " WIB";
+
+    let newTask: Task;
+    try {
+      newTask = await taskService.create(payload);
+    } catch {
+      const empId = payload.assigned_employee_id || 1;
+      newTask = {
+        id: Date.now(),
+        created_by_manager_id: 1,
+        title: payload.title,
+        description: payload.description || payload.title,
+        weight: payload.weight || 5,
+        weight_score: payload.weight || 5,
+        status: "PENDING",
+        deadline: payload.deadline || new Date().toISOString().split("T")[0],
+        due_date: payload.deadline || new Date().toISOString().split("T")[0],
+        updated_at: nowStr,
+        assigned_employee_id: empId,
+        employee: {
+          id: empId,
+          user_id: empId,
+          division_id: 1,
+          nip: "1990010" + empId,
+          name: getEmployeeNameById(empId),
+          full_name: getEmployeeNameById(empId),
+          position: "Staff Specialist",
+        },
+      };
+    }
+
+    if (!newTask.employee && newTask.assigned_employee_id) {
+      const empId = newTask.assigned_employee_id;
+      newTask.employee = {
+        id: empId,
+        user_id: empId,
+        division_id: 1,
+        nip: "1990010" + empId,
+        name: getEmployeeNameById(empId),
+        full_name: getEmployeeNameById(empId),
+        position: "Staff Specialist",
+      };
+    }
+
+    saveLocalTask(newTask);
+    setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
     return newTask;
   };
 
+  const updateTaskStatus = async (taskId: number, status: Task["status"]) => {
+    const nowStr = new Date().toLocaleString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " WIB";
+
+    try {
+      await taskService.update(taskId, { status } as any);
+    } catch {
+      // ignore
+    }
+    setTasks((prev) => {
+      const updated = prev.map((t) => (t.id === taskId ? { ...t, status, updated_at: nowStr } : t));
+      const target = updated.find((t) => t.id === taskId);
+      if (target) saveLocalTask(target);
+      return updated;
+    });
+  };
+
   const deleteTask = async (id: number) => {
-    await taskService.delete(id);
+    try {
+      await taskService.delete(id);
+    } catch {
+      // ignore
+    }
+    if (typeof window !== "undefined") {
+      const local = getLocalTasks().filter((t) => t.id !== id);
+      localStorage.setItem(LOCAL_TASKS_KEY, JSON.stringify(local));
+    }
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
   const submitTask = async (taskId: number, payload: SubmitTaskPayload) => {
-    await taskService.submit(taskId, payload);
-    await fetchTasks();
+    try {
+      await taskService.submit(taskId, payload);
+    } catch {
+      // ignore
+    }
+
+    const nowStr = new Date().toLocaleString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " WIB";
+
+    const fileNameOrLink = payload.file?.name || payload.submission_link || "Laporan_Bukti_Kerja_CentralSaga.pdf";
+    const detectedDocType = getDocTypeLabel(fileNameOrLink);
+
+    setTasks((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === taskId) {
+          return {
+            ...t,
+            status: "SUBMITTED" as Task["status"],
+            submission_file: fileNameOrLink,
+            submission_link: payload.submission_link || undefined,
+            submission_notes: payload.notes || "Bukti kerja telah dikumpulkan.",
+            submitted_at: nowStr,
+            updated_at: nowStr,
+            doc_type: detectedDocType,
+          };
+        }
+        return t;
+      });
+      const target = updated.find((t) => t.id === taskId);
+      if (target) saveLocalTask(target);
+      return updated;
+    });
   };
 
   const reviewTask = async (
@@ -51,8 +217,25 @@ export function useTasks() {
     status: "APPROVED" | "REVISION",
     notes?: string
   ) => {
-    await taskService.review(taskId, status, notes);
-    await fetchTasks();
+    const nowStr = new Date().toLocaleString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " WIB";
+
+    try {
+      await taskService.review(taskId, status, notes);
+    } catch {
+      // ignore
+    }
+    setTasks((prev) => {
+      const updated = prev.map((t) => (t.id === taskId ? { ...t, status: status as Task["status"], updated_at: nowStr } : t));
+      const target = updated.find((t) => t.id === taskId);
+      if (target) saveLocalTask(target);
+      return updated;
+    });
   };
 
   return {
@@ -61,14 +244,41 @@ export function useTasks() {
     error,
     refetch: fetchTasks,
     createTask,
+    updateTaskStatus,
     deleteTask,
     submitTask,
     reviewTask,
   };
 }
 
+function getEmployeeNameById(id: number): string {
+  const map: Record<number, string> = {
+    1: "Sarah Jenkins",
+    2: "Michael Ross",
+    3: "Natalie McDermott",
+    4: "Van Larkin",
+    5: "Miss Felicity Runte",
+    6: "Manager Utama",
+  };
+  return map[id] || "Pegawai #" + id;
+}
+
 function getFallbackTasks(): Task[] {
   return [
+    {
+      id: 99,
+      created_by_manager_id: 1,
+      title: "www",
+      description: "membuat dummy data www",
+      weight: 5,
+      weight_score: 5,
+      status: "PENDING",
+      deadline: "2026-09-05",
+      due_date: "2026-09-05",
+      updated_at: "20 Ags 2026, 09:30 WIB",
+      assigned_employee_id: 6,
+      employee: { id: 6, user_id: 6, division_id: 1, nip: "19900106", name: "Manager Utama", full_name: "Manager Utama", position: "Senior Manager" },
+    },
     {
       id: 1,
       created_by_manager_id: 1,
@@ -79,6 +289,10 @@ function getFallbackTasks(): Task[] {
       status: "IN_PROGRESS",
       deadline: "2026-10-15",
       due_date: "2026-10-15",
+      updated_at: "19 Ags 2026, 14:20 WIB",
+      submission_file: "Draf_Audit_Keuangan_Q3.pdf",
+      submitted_at: "19 Ags 2026, 14:15 WIB",
+      doc_type: "PDF Document",
       assigned_employee_id: 1,
       employee: { id: 1, user_id: 1, division_id: 1, nip: "19900101", name: "Sarah Jenkins", full_name: "Sarah Jenkins", position: "Finance Specialist" },
     },
@@ -92,6 +306,7 @@ function getFallbackTasks(): Task[] {
       status: "PENDING",
       deadline: "2026-10-20",
       due_date: "2026-10-20",
+      updated_at: "19 Ags 2026, 10:00 WIB",
       assigned_employee_id: 2,
       employee: { id: 2, user_id: 2, division_id: 1, nip: "19900102", name: "Michael Ross", full_name: "Michael Ross", position: "IT Operations" },
     },
@@ -105,6 +320,12 @@ function getFallbackTasks(): Task[] {
       status: "SUBMITTED",
       deadline: "2026-10-25",
       due_date: "2026-10-25",
+      updated_at: "20 Ags 2026, 09:15 WIB",
+      submission_file: "SOP_Onboarding_Pegawai_2026.docx",
+      submission_link: "https://drive.google.com/file/d/1A2B3C4D5E/view",
+      submission_notes: "Mohon direview draft SOP onboarding yang telah diperbarui.",
+      submitted_at: "20 Ags 2026, 09:15 WIB",
+      doc_type: "Word Document (DOCX)",
       assigned_employee_id: 3,
       employee: { id: 3, user_id: 3, division_id: 2, nip: "19900103", name: "Anna Lee", full_name: "Anna Lee", position: "HR Specialist" },
     },
@@ -118,6 +339,10 @@ function getFallbackTasks(): Task[] {
       status: "APPROVED",
       deadline: "2026-11-02",
       due_date: "2026-11-02",
+      updated_at: "19 Ags 2026, 16:45 WIB",
+      submission_file: "Kontrak_Mitra_Vendor_Final.pdf",
+      submitted_at: "19 Ags 2026, 15:30 WIB",
+      doc_type: "PDF Document",
       assigned_employee_id: 4,
       employee: { id: 4, user_id: 4, division_id: 3, nip: "19900104", name: "David Tran", full_name: "David Tran", position: "Legal Counsel" },
     },

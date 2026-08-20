@@ -1,16 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toast } from "@/components/ui/Toast";
-import { Building2, Plus, Users, Search, X, UserCheck, Trash2 } from "lucide-react";
-
-interface DivisionItem {
-  id: number;
-  code: string;
-  name: string;
-  description: string;
-  total_members: number;
-}
+import { divisionService } from "@/services/division-service";
+import { Division } from "@/types/api";
+import { Building2, Plus, Users, Search, X, Trash2 } from "lucide-react";
 
 interface MemberItem {
   id: number;
@@ -21,40 +15,11 @@ interface MemberItem {
 }
 
 export default function DivisionsPage() {
-  const [divisions, setDivisions] = useState<DivisionItem[]>([
-    {
-      id: 1,
-      code: "DIV-IT",
-      name: "Information Technology",
-      description: "Pengembangan perangkat lunak, infrastruktur server & jaringan.",
-      total_members: 8,
-    },
-    {
-      id: 2,
-      code: "DIV-HR",
-      name: "Human Resources",
-      description: "Pengelolaan SDM, rekrutmen, pelatihan, dan kesejahteraan pegawai.",
-      total_members: 4,
-    },
-    {
-      id: 3,
-      code: "DIV-FIN",
-      name: "Finance & Accounting",
-      description: "Pengelolaan keuangan, pembukuan, dan audit anggaran.",
-      total_members: 5,
-    },
-    {
-      id: 4,
-      code: "DIV-MKT",
-      name: "Marketing & Growth",
-      description: "Pemasaran produk, hubungan masyarakat, dan strategi promosi.",
-      total_members: 6,
-    },
-  ]);
-
+  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedDivisionForDetail, setSelectedDivisionForDetail] = useState<DivisionItem | null>(null);
+  const [selectedDivisionForDetail, setSelectedDivisionForDetail] = useState<Division | null>(null);
 
   // Form State
   const [newCode, setNewCode] = useState("");
@@ -68,6 +33,22 @@ export default function DivisionsPage() {
     type: "success",
     message: null,
   });
+
+  const loadDivisions = async () => {
+    try {
+      setLoading(true);
+      const data = await divisionService.getAll();
+      setDivisions(data);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDivisions();
+  }, []);
 
   const mockMembers: Record<number, MemberItem[]> = {
     1: [
@@ -93,44 +74,49 @@ export default function DivisionsPage() {
       d.code.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCreateDivision = (e: React.FormEvent) => {
+  const handleCreateDivision = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCode || !newName) return;
 
-    const newDiv: DivisionItem = {
-      id: Date.now(),
-      code: newCode.toUpperCase(),
-      name: newName,
-      description: newDescription || "Unit kerja departemen Central Saga.",
-      total_members: 0,
-    };
-
-    setDivisions((prev) => [newDiv, ...prev]);
-    setIsCreateOpen(false);
-    setNewCode("");
-    setNewName("");
-    setNewDescription("");
-    setToast({
-      type: "success",
-      message: `Divisi baru '${newCode}' (${newName}) berhasil ditambahkan!`,
-    });
-  };
-
-  const handleDeleteDivision = (id: number, name: string, members: number) => {
-    if (members > 0) {
-      setToast({
-        type: "error",
-        message: `Gagal menghapus divisi: Divisi '${name}' masih memiliki ${members} pegawai aktif!`,
+    try {
+      const created = await divisionService.create({
+        code: newCode.toUpperCase(),
+        name: newName,
+        description: newDescription || "Unit kerja departemen Central Saga.",
       });
-      return;
-    }
 
-    if (confirm(`Apakah Anda yakin ingin menghapus divisi ${name}?`)) {
-      setDivisions((prev) => prev.filter((d) => d.id !== id));
+      setDivisions((prev) => [created, ...prev.filter((d) => d.id !== created.id)]);
+      setIsCreateOpen(false);
+      setNewCode("");
+      setNewName("");
+      setNewDescription("");
       setToast({
         type: "success",
-        message: `Divisi '${name}' berhasil dihapus!`,
+        message: `Divisi baru '${newCode}' (${newName}) berhasil ditambahkan!`,
       });
+    } catch {
+      setToast({
+        type: "error",
+        message: "Gagal membuat divisi baru.",
+      });
+    }
+  };
+
+  const handleDeleteDivision = async (id: number, name: string) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus divisi ${name}?`)) {
+      try {
+        await divisionService.delete(id);
+        setDivisions((prev) => prev.filter((d) => d.id !== id));
+        setToast({
+          type: "success",
+          message: `Divisi '${name}' berhasil dihapus!`,
+        });
+      } catch {
+        setToast({
+          type: "error",
+          message: `Gagal menghapus divisi '${name}'.`,
+        });
+      }
     }
   };
 
@@ -156,7 +142,7 @@ export default function DivisionsPage() {
 
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-900 hover:bg-blue-950 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-900 hover:bg-blue-950 active:scale-98 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>+ Tambah Divisi Baru</span>
@@ -191,7 +177,7 @@ export default function DivisionsPage() {
                 </span>
                 <span className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
                   <Users className="w-3.5 h-3.5 text-slate-400" />
-                  {item.total_members} Anggota
+                  Divisi Terdaftar
                 </span>
               </div>
               <h3 className="text-base font-bold text-slate-900 mb-1 flex items-center gap-2 group-hover:text-blue-600 transition-colors">
@@ -199,7 +185,7 @@ export default function DivisionsPage() {
                 <span>{item.name}</span>
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                {item.description}
+                {item.description || "Unit kerja departemen Central Saga."}
               </p>
             </div>
 
@@ -211,7 +197,7 @@ export default function DivisionsPage() {
                 Lihat Detail Anggota
               </button>
               <button
-                onClick={() => handleDeleteDivision(item.id, item.name, item.total_members)}
+                onClick={() => handleDeleteDivision(item.id, item.name)}
                 className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                 title="Hapus Divisi"
               >

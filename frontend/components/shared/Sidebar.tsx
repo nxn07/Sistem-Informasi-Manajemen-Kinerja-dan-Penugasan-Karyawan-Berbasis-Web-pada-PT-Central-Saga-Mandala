@@ -2,21 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
+import { useAuth } from "@/hooks/useAuth";
+import { authService } from "@/services/auth-service";
+import centralSagaLogo from "@/public/central-saga-logo.png";
 import {
   LayoutDashboard,
   CheckSquare,
+  Award,
   Building2,
   Target,
-  Award,
   Users,
   History,
   Settings,
   LogOut,
-  Sparkles,
 } from "lucide-react";
-import { authService } from "@/services/auth-service";
-import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
 
 const menuItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["ADMIN", "MANAGER", "EMPLOYEE"] },
@@ -38,14 +38,14 @@ export default function Sidebar() {
       <div>
         {/* Brand Header with Official Central Saga Green Logo & Name */}
         <div className="px-3 py-4 mb-4 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0 border border-emerald-500/30">
-            <img src="/central-saga-logo.png" alt="Central Saga" className="w-full h-full object-contain" />
+          <div className="w-11 h-11 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-lg shadow-emerald-500/10 shrink-0 border-2 border-emerald-500/40 ring-2 ring-emerald-500/20">
+            <Image src={centralSagaLogo} alt="Central Saga" className="w-full h-full object-contain" />
           </div>
           <div>
             <h1 className="text-base font-black tracking-tight text-white leading-tight">
               Central Saga
             </h1>
-            <p className="text-[10px] font-bold text-emerald-400 tracking-wide uppercase">
+            <p className="text-[10px] font-extrabold text-emerald-400 tracking-wide uppercase">
               Enterprise Performance
             </p>
           </div>
@@ -75,23 +75,19 @@ export default function Sidebar() {
             })
             .map((item) => {
               const Icon = item.icon;
-              const isActive =
-                item.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(item.href);
+              const isActive = pathname === item.href;
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all",
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                     isActive
-                      ? "bg-blue-600 text-white shadow-sm font-bold"
-                      : "text-slate-400 hover:bg-slate-800/80 hover:text-slate-200"
-                  )}
+                      ? "bg-blue-600 text-white shadow-md font-bold"
+                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                  }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
                   <span>{item.name}</span>
                 </Link>
               );
@@ -103,7 +99,7 @@ export default function Sidebar() {
       <div className="pt-4 border-t border-slate-800 space-y-3">
         <div className="px-3 py-2 bg-slate-800/80 rounded-xl border border-slate-700/60 shadow-xs flex items-center gap-2 text-xs">
           <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shadow-2xs">
-            {user?.name?.slice(0, 2).toUpperCase() || "AS"}
+            {user?.name?.slice(0, 2).toUpperCase() || "CS"}
           </div>
           <div className="overflow-hidden flex-1">
             <p className="font-bold text-slate-200 truncate text-[11px]">

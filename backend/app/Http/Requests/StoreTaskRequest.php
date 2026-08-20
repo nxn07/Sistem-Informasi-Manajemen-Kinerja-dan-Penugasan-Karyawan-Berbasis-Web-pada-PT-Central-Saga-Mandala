@@ -11,6 +11,15 @@ class StoreTaskRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation()
+    {
+        $this->merge([
+            'due_date'     => $this->due_date ?? $this->deadline ?? now()->addDays(7)->toDateString(),
+            'priority'     => $this->priority ?? 'Medium',
+            'weight_score' => $this->weight_score ?? $this->weight ?? 5,
+        ]);
+    }
+
     public function rules(): array
     {
         return [
@@ -19,8 +28,10 @@ class StoreTaskRequest extends FormRequest
             'title'                => 'required|string|max:255',
             'description'          => 'required|string',
             'due_date'             => 'required|date',
-            'priority'             => 'required|in:Low,Medium,High,LOW,MEDIUM,HIGH',
+            'deadline'             => 'nullable|date',
+            'priority'             => 'required|string',
             'weight_score'         => 'required|integer|min:1|max:100',
+            'weight'               => 'nullable|integer',
         ];
     }
 }

@@ -1,50 +1,55 @@
 "use client";
 
-import { useState } from "react";
-import { Toast } from "@/components/ui/Toast";
-import { History, Search, Filter, ShieldCheck, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { auditLogService } from "@/services/audit-log-service";
+import { ActivityLog } from "@/types/api";
+import { Search } from "lucide-react";
+
+interface AuditDisplayItem {
+  id: number;
+  timestamp: string;
+  user: string;
+  action: string;
+  module: string;
+  details: string;
+}
 
 export default function ActivityLogsPage() {
-  const [logs] = useState([
-    {
-      id: 1,
-      timestamp: "19 Ags 2026, 14:30 WIB",
-      user: "Manager Utama",
-      action: "Approved Task",
-      module: "Tasks Module",
-      ip: "192.168.1.10",
-      details: "Menyetujui tugas Q3 Financial Audit Report",
-    },
-    {
-      id: 2,
-      timestamp: "19 Ags 2026, 14:15 WIB",
-      user: "Natalie McDermott",
-      action: "Submitted Task",
-      module: "Tasks Module",
-      ip: "192.168.1.15",
-      details: "Mengumpulkan bukti kerja UI Design Mockup",
-    },
-    {
-      id: 3,
-      timestamp: "19 Ags 2026, 13:00 WIB",
-      user: "Admin System",
-      action: "Updated KPI Criteria",
-      module: "KPI Module",
-      ip: "192.168.1.1",
-      details: "Memperbarui bobot kriteria Kedisiplinan menjadi 25%",
-    },
-    {
-      id: 4,
-      timestamp: "19 Ags 2026, 11:20 WIB",
-      user: "Haskell Tromp II",
-      action: "Status Changed",
-      module: "Tasks Module",
-      ip: "192.168.1.20",
-      details: "Mengubah status tugas Server Migration ke IN_PROGRESS",
-    },
-  ]);
-
+  const [logs, setLogs] = useState<AuditDisplayItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const loadAuditLogs = async () => {
+    try {
+      setLoading(true);
+      const rawData = await auditLogService.getAll();
+      const mapped: AuditDisplayItem[] = rawData.map((l: ActivityLog) => {
+        const userName = l.causer?.name || l.causer?.email || "System";
+        const dateStr = l.created_at ? new Date(l.created_at).toLocaleString("id-ID") : "19 Ags 2026";
+        const desc = l.description || "Aktivitas audit diproses";
+        const modName = l.subject_type ? l.subject_type.split("\\").pop() || "System" : "Audit Module";
+
+        return {
+          id: l.id,
+          timestamp: dateStr,
+          user: userName,
+          action: l.log_name || "Aktivitas",
+          module: modName,
+          details: desc,
+        };
+      });
+
+      setLogs(mapped);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAuditLogs();
+  }, []);
 
   const filteredLogs = logs.filter(
     (l) =>
