@@ -69,7 +69,19 @@ export default function UsersPage() {
   const openRbacModal = (userItem: User) => {
     setSelectedUserForRbac(userItem);
     setEditedRole(userItem.role || userItem.roles?.[0] || "EMPLOYEE");
-    setEditedPermissions(userItem.permissions || ["tasks.submit"]);
+    
+    let currentPerms = userItem.permissions;
+    if (typeof window !== "undefined") {
+      try {
+        const rawByEmail = localStorage.getItem(`simkap_user_perm_${userItem.email.toLowerCase()}`);
+        const rawById = localStorage.getItem(`simkap_user_perm_${userItem.id}`);
+        const raw = rawByEmail || rawById;
+        if (raw) currentPerms = JSON.parse(raw);
+      } catch {
+        // ignore
+      }
+    }
+    setEditedPermissions(currentPerms || ["tasks.submit"]);
   };
 
   const handleTogglePermission = (permissionKey: string) => {
@@ -90,14 +102,22 @@ export default function UsersPage() {
         permissions: editedPermissions,
       });
 
-      // Update current logged in user cookie if editing logged-in user
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`simkap_user_perm_${selectedUserForRbac.email.toLowerCase()}`, JSON.stringify(editedPermissions));
+        localStorage.setItem(`simkap_user_perm_${selectedUserForRbac.id}`, JSON.stringify(editedPermissions));
+      }
+
+      // Update current logged in user cookie & localStorage if editing logged-in user
       const currentUserCookie = Cookies.get("simkap_user");
       if (currentUserCookie) {
         try {
           const parsed = JSON.parse(currentUserCookie);
-          if (parsed.email === selectedUserForRbac.email || parsed.id === selectedUserForRbac.id) {
+          if (parsed.email?.toLowerCase() === selectedUserForRbac.email?.toLowerCase() || parsed.id === selectedUserForRbac.id) {
             const merged = { ...parsed, role: editedRole, roles: [editedRole], permissions: editedPermissions };
             Cookies.set("simkap_user", JSON.stringify(merged), { expires: 7 });
+            if (typeof window !== "undefined") {
+              localStorage.setItem("simkap_user", JSON.stringify(merged));
+            }
           }
         } catch {
           // ignore
@@ -106,7 +126,7 @@ export default function UsersPage() {
 
       setUsers((prev) =>
         prev.map((u) =>
-          u.id === selectedUserForRbac.id
+          u.id === selectedUserForRbac.id || u.email.toLowerCase() === selectedUserForRbac.email.toLowerCase()
             ? { ...u, role: editedRole, roles: [editedRole], permissions: editedPermissions }
             : u
         )
@@ -115,7 +135,7 @@ export default function UsersPage() {
       setSelectedUserForRbac(null);
       setToast({
         type: "success",
-        message: `Hak Akses & Role (${editedRole}) Berhasil Diperbarui untuk ${selectedUserForRbac.name}! (Izin: ${editedPermissions.join(", ")})`,
+        message: `Hak Akses & Role (${editedRole}) Berhasil Diperbarui untuk ${selectedUserForRbac.name}! (Izin: ${editedPermissions.length > 0 ? editedPermissions.join(", ") : "Tanpa Izin Khusus"})`,
       });
     } catch {
       setToast({
