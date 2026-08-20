@@ -14,9 +14,11 @@ class SubmitTaskRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file'  => 'nullable|file|mimes:pdf,zip,png,jpeg|max:10240', // Max 10MB
-            'link'  => 'nullable|url',
-            'notes' => 'nullable|string',
+            'file'            => 'nullable|file|mimes:pdf,zip,png,jpeg,jpg,webp,docx,doc,xlsx,pptx|max:20480',
+            'link'            => 'nullable|string',
+            'submission_link' => 'nullable|string',
+            'notes'           => 'nullable|string',
+            'submission_notes' => 'nullable|string',
         ];
     }
 }

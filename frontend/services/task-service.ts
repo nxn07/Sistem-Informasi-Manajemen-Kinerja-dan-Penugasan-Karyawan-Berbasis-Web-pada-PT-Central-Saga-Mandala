@@ -7,6 +7,7 @@ export interface CreateTaskPayload {
   description?: string;
   weight?: number;
   assigned_employee_id: number;
+  assigned_employee_name?: string;
   division_id?: number;
   deadline?: string;
 }

@@ -59,14 +59,26 @@ export function CreateTaskModal({
 
   useEffect(() => {
     if (isOpen) {
-      setUsers(getFallbackUsers());
-      setLoadingUsers(false);
       userService
         .getAll()
         .then((data) => {
-          if (data && data.length > 0) setUsers(data);
+          if (data && data.length > 0) {
+            const unique = new Map<string, User>();
+            data.forEach((u) => {
+              const key = (u.email || u.name).toLowerCase().trim();
+              if (!unique.has(key)) unique.set(key, u);
+            });
+            setUsers(Array.from(unique.values()));
+          } else {
+            setUsers(getFallbackUsers());
+          }
         })
-        .catch(() => {});
+        .catch(() => {
+          setUsers(getFallbackUsers());
+        })
+        .finally(() => {
+          setLoadingUsers(false);
+        });
     } else {
       reset();
       setServerError(null);
@@ -77,7 +89,11 @@ export function CreateTaskModal({
     try {
       setSubmitting(true);
       setServerError(null);
-      await onSubmit(data);
+      const selectedUser = users.find((u) => Number(u.id) === Number(data.assigned_employee_id));
+      await onSubmit({
+        ...data,
+        assigned_employee_name: selectedUser?.name || selectedUser?.full_name,
+      });
       onClose();
       reset();
     } catch (err: any) {

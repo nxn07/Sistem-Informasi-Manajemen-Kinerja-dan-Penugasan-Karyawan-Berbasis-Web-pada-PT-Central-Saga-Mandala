@@ -30,20 +30,25 @@ function saveLocalUser(user: User) {
 
 function getFallbackUsers(): User[] {
   return [
-    { id: 1, name: "Admin System", email: "admin@gmail.com", role: "ADMIN", roles: ["ADMIN"], permissions: ["*"], created_at: "2026-08-19" },
-    { id: 2, name: "Manager Utama", email: "manager@gmail.com", role: "MANAGER", roles: ["MANAGER"], permissions: ["tasks.create", "tasks.review"], created_at: "2026-08-19" },
-    { id: 3, name: "Sarah Jenkins", email: "sarah@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit", "tasks.create", "evaluations.view_own"], created_at: "2026-08-19" },
-    { id: 4, name: "Michael Ross", email: "michael@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 5, name: "Natalie McDermott", email: "natalie@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 6, name: "Van Larkin", email: "van@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 1, name: "Sarah Jenkins", email: "sarah@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit", "tasks.create", "evaluations.view_own"], created_at: "2026-08-19" },
+    { id: 2, name: "Michael Ross", email: "michael@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 3, name: "Natalie McDermott", email: "natalie@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 4, name: "Van Larkin", email: "van@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 5, name: "Miss Felicity Runte", email: "felicity@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 6, name: "Manager Utama", email: "manager@gmail.com", role: "MANAGER", roles: ["MANAGER"], permissions: ["tasks.create", "tasks.review"], created_at: "2026-08-19" },
+    { id: 7, name: "Admin System", email: "admin@gmail.com", role: "ADMIN", roles: ["ADMIN"], permissions: ["*"], created_at: "2026-08-19" },
   ];
 }
 
 function mergeUsers(serverUsers: User[], localUsers: User[]): User[] {
-  const map = new Map<number, User>();
-  localUsers.forEach((u) => map.set(u.id, u));
+  const map = new Map<string, User>();
+  localUsers.forEach((u) => {
+    const key = (u.email || u.name || String(u.id)).toLowerCase().trim();
+    map.set(key, u);
+  });
   serverUsers.forEach((u) => {
-    if (!map.has(u.id)) map.set(u.id, u);
+    const key = (u.email || u.name || String(u.id)).toLowerCase().trim();
+    map.set(key, u);
   });
   return Array.from(map.values());
 }

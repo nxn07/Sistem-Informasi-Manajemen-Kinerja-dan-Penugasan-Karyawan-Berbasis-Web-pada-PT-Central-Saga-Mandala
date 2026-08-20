@@ -16,10 +16,24 @@
 
 ---
 
-## 🔑 2. Daftar Kredensial Login Pengguna
+## ⚡ 2. Ringkasan Cepat Email & Password Login (Siap Copy-Paste)
 
 > [!TIP]
-> **Password Universal**: Kata sandi untuk **seluruh akun** di bawah ini adalah **`password`**.
+> **Password Seluruh Akun**: `password`
+
+| Role / Akses | Nama Pengguna | Email Login | Password | Jabatan / Peran |
+|:---|:---|:---|:---|:---|
+| 👑 **Super Admin** | Admin System | `admin@gmail.com` | `password` | Super Admin & Pengelola RBAC |
+| 👔 **Manager** | Manager Utama | `manager@gmail.com` | `password` | Senior Manager |
+| 👤 **Employee 1** | Sarah Jenkins | `sarah@gmail.com` | `password` | Finance Specialist |
+| 👤 **Employee 2** | Michael Ross | `michael@gmail.com` | `password` | IT Operations |
+| 👤 **Employee 3** | Natalie McDermott | `natalie@gmail.com` | `password` | HR Specialist |
+| 👤 **Employee 4** | Van Larkin | `van@gmail.com` | `password` | Legal Counsel |
+| 👤 **Employee 5** | Miss Felicity Runte | `felicity@gmail.com` | `password` | Staff Specialist |
+
+---
+
+## 🔑 3. Detail Akses & Fitur Per Role
 
 ### A. Role Management (Atasan & Pengelola)
 
@@ -28,14 +42,15 @@
 | 1 | 👑 **ADMIN** | `admin@gmail.com` | `password` | Admin System | **8 Menu Complete**: Full Super Admin, Kelola User, RBAC, Divisi, KPI, Audit Log |
 | 2 | 👔 **MANAGER** | `manager@gmail.com` | `password` | Manager Utama | **3 Menu Operasional**: Assign Tugas Baru, Review & Disetujui/Revisi, Evaluasi KPI |
 
-### B. Role Employee (Staf Operasional)
+### B. Role Employee (Staf Operasional / Karyawan)
 
 | No | Peran (Role) | Email Login | Password | Nama Pengguna | Jabatan Pegawai | Akses Fitur Utama |
 |:--:|:---|:---|:---|:---|:---|:---|
-| 1 | 👤 **EMPLOYEE 1** | `sarah@gmail.com` | `password` | Sarah Jenkins | Finance Specialist | Mulai Kerja, Submit Bukti, Custom Create Task |
-| 2 | 👤 **EMPLOYEE 2** | `michael@gmail.com` | `password` | Michael Ross | IT Operations | Filter Tugas Saya, Submit & Perbaiki Bukti |
-| 3 | 👤 **EMPLOYEE 3** | `natalie@gmail.com` | `password` | Natalie McDermott | UI/UX Designer | Filter Tugas Saya, Submit & Perbaiki Bukti |
-| 4 | 👤 **EMPLOYEE 4** | `van@gmail.com` | `password` | Van Larkin | Quality Assurance | Filter Tugas Saya, Submit & Perbaiki Bukti |
+| 1 | 👤 **EMPLOYEE 1** | `sarah@gmail.com` | `password` | Sarah Jenkins | Finance Specialist | Mulai Kerja, Submit Bukti, Buat Tugas Baru, Filter Tugas Saya |
+| 2 | 👤 **EMPLOYEE 2** | `michael@gmail.com` | `password` | Michael Ross | IT Operations | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
+| 3 | 👤 **EMPLOYEE 3** | `natalie@gmail.com` | `password` | Natalie McDermott | HR Specialist | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
+| 4 | 👤 **EMPLOYEE 4** | `van@gmail.com` | `password` | Van Larkin | Legal Counsel | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
+| 5 | 👤 **EMPLOYEE 5** | `felicity@gmail.com` | `password` | Miss Felicity Runte | Staff Specialist | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
 
 > [!IMPORTANT]
 > **Akun Baru**: Pengguna baru yang didaftarkan melalui menu `/users` dapat langsung diloginkan menggunakan email baru tersebut dan password default: **`password`**.
