@@ -3,113 +3,171 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ReviewTaskRequest;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\SubmitTaskRequest;
-use App\Http\Requests\ReviewTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Resources\TaskResource;
-use App\Repositories\TaskRepository;
-use App\Services\TaskService;
+use App\Models\Task;
+use App\Services\Contracts\TaskServiceInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 class TaskController extends Controller
 {
-    protected TaskRepository $taskRepository;
-    protected TaskService $taskService;
+    protected TaskServiceInterface $taskService;
 
-    public function __construct(TaskRepository $taskRepository, TaskService $taskService)
+    public function __construct(TaskServiceInterface $taskService)
     {
-        $this->taskRepository = $taskRepository;
         $this->taskService = $taskService;
     }
 
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
+        try {
+            $this->authorize('viewAny', Task::class);
 
-        if ($user->hasRole('admin')) {
-            $tasks = \App\Models\Task::with(['employee', 'submissions'])->latest()->get();
-        } elseif ($user->hasRole('manager')) {
-            $divisionId = $user->employee->division_id ?? 0;
-            $tasks = $this->taskRepository->getAllByDivision($divisionId);
-        } else {
-            $employeeId = $user->employee->id ?? 0;
-            $tasks = $this->taskRepository->getByEmployeeId($employeeId);
+            $tasks = $this->taskService->getAllTasks();
+            return response()->json([
+                'success' => true,
+                'message' => 'Daftar tugas berhasil diambil.',
+                'data'    => TaskResource::collection($tasks),
+            ], 200);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data'    => TaskResource::collection($tasks),
-        ]);
     }
 
     public function store(StoreTaskRequest $request): JsonResponse
     {
-        $task = $this->taskService->assignTask($request->validated(), $request->user()->id);
+        try {
+            $this->authorize('create', Task::class);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Tugas berhasil diberikan.',
-            'data'    => new TaskResource($task),
-        ], 201);
+            $task = $this->taskService->assignTask($request->validated(), $request->user()->id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tugas berhasil dibuat dan ditugaskan.',
+                'data'    => new TaskResource($task),
+            ], 201);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
-    public function show($id): JsonResponse
+    public function show(int $id): JsonResponse
     {
-        $task = $this->taskRepository->findById($id);
+        try {
+            $task = $this->taskService->getTaskById($id);
+            $this->authorize('view', $task);
 
-        if (!$task) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Detail tugas berhasil ditemukan.',
+                'data'    => new TaskResource($task),
+            ], 200);
+        } catch (ModelNotFoundException $e) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data'    => new TaskResource($task),
-        ]);
     }
 
-    public function submit(SubmitTaskRequest $request, $id): JsonResponse
+    public function update(UpdateTaskRequest $request, int $id): JsonResponse
     {
-        $task = $this->taskRepository->findById($id);
+        try {
+            $task = $this->taskService->getTaskById($id);
+            $this->authorize('update', $task);
 
-        if (!$task) {
+            $updatedTask = $this->taskService->updateTask($id, $request->validated());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tugas berhasil diperbarui.',
+                'data'    => new TaskResource($updatedTask),
+            ], 200);
+        } catch (ModelNotFoundException $e) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-
-        $data = $request->validated();
-
-        if ($request->hasFile('file')) {
-            $path = $request->file('file')->store('submissions', 'public');
-            $data['file_path'] = $path;
-        }
-
-        $submission = $this->taskService->submitTask($task, $data);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Tugas berhasil dikumpulkan.',
-            'data'    => $submission,
-        ]);
     }
 
-    public function review(ReviewTaskRequest $request, $id): JsonResponse
+    public function destroy(int $id): JsonResponse
     {
-        $task = $this->taskRepository->findById($id);
+        try {
+            $task = $this->taskService->getTaskById($id);
+            $this->authorize('delete', $task);
 
-        if (!$task) {
+            $this->taskService->deleteTask($id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tugas berhasil dihapus.',
+            ], 200);
+        } catch (ModelNotFoundException $e) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
 
-        $this->taskService->reviewTask(
-            $task,
-            $request->status,
-            $request->review_notes,
-            $request->user()->id
-        );
+    public function submit(SubmitTaskRequest $request, int $id): JsonResponse
+    {
+        try {
+            $task = $this->taskService->getTaskById($id);
+            $this->authorize('submit', $task);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Review tugas berhasil disimpan.',
-        ]);
+            $submissionData = $request->validated();
+
+            if ($request->hasFile('file')) {
+                $path = $request->file('file')->store('submissions', 'public');
+                $submissionData['file_path'] = $path;
+                $submissionData['submission_file'] = $path;
+            }
+
+            $submission = $this->taskService->submitTask($task, $submissionData);
+
+            if ($request->hasFile('file')) {
+                $submission->addMediaFromRequest('file')->toMediaCollection('task_files');
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tugas berhasil dikumpulkan.',
+                'data'    => $submission,
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function review(ReviewTaskRequest $request, int $id): JsonResponse
+    {
+        try {
+            $task = $this->taskService->getTaskById($id);
+            $this->authorize('review', $task);
+
+            $data = $request->validated();
+            $this->taskService->reviewTask(
+                $task,
+                $data['status'],
+                $data['notes'] ?? $data['review_notes'] ?? null,
+                $request->user()->id
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status tugas berhasil diperbarui.',
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

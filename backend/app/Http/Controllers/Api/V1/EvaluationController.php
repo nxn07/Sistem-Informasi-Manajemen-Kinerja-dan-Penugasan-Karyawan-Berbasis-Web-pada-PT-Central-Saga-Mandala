@@ -1,0 +1,143 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreEvaluationRequest;
+use App\Http\Requests\UpdateEvaluationRequest;
+use App\Http\Resources\PerformanceEvaluationResource;
+use App\Models\PerformanceEvaluation;
+use App\Services\Contracts\EvaluationServiceInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Throwable;
+
+class EvaluationController extends Controller
+{
+    protected EvaluationServiceInterface $evaluationService;
+
+    public function __construct(EvaluationServiceInterface $evaluationService)
+    {
+        $this->evaluationService = $evaluationService;
+    }
+
+    public function index(): JsonResponse
+    {
+        try {
+            $evaluations = $this->evaluationService->getAllEvaluations();
+            return response()->json([
+                'success' => true,
+                'message' => 'Daftar evaluasi berhasil diambil.',
+                'data'    => PerformanceEvaluationResource::collection($evaluations),
+            ], 200);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data evaluasi: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function store(StoreEvaluationRequest $request): JsonResponse
+    {
+        try {
+            $data = $request->validated();
+
+            if (!isset($data['evaluator_manager_id']) && $request->user()) {
+                $data['evaluator_manager_id'] = $request->user()->id;
+            }
+
+            $evaluation = $this->evaluationService->createEvaluation($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Evaluasi berhasil dibuat.',
+                'data'    => new PerformanceEvaluationResource($evaluation),
+            ], 201);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat evaluasi: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        try {
+            $evaluation = $this->evaluationService->getEvaluationById($id);
+            return response()->json([
+                'success' => true,
+                'message' => 'Detail evaluasi berhasil ditemukan.',
+                'data'    => new PerformanceEvaluationResource($evaluation),
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Evaluasi tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function myEvaluation(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $employee = $user->employee;
+
+            if (!$employee) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akun user ini tidak terhubung dengan data karyawan.',
+                ], 404);
+            }
+
+            $evaluations = PerformanceEvaluation::where('employee_id', $employee->id)
+                ->with(['task', 'evaluatorManager', 'kpiCriteria'])
+                ->latest()
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Evaluasi kinerja pribadi berhasil diambil.',
+                'data'    => PerformanceEvaluationResource::collection($evaluations),
+            ], 200);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil evaluasi pribadi: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function update(UpdateEvaluationRequest $request, int $id): JsonResponse
+    {
+        try {
+            $evaluation = $this->evaluationService->updateEvaluation($id, $request->validated());
+            return response()->json([
+                'success' => true,
+                'message' => 'Evaluasi berhasil diperbarui.',
+                'data'    => new PerformanceEvaluationResource($evaluation),
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Evaluasi tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $this->evaluationService->deleteEvaluation($id);
+            return response()->json([
+                'success' => true,
+                'message' => 'Evaluasi berhasil dihapus.',
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Evaluasi tidak ditemukan.'], 404);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+}

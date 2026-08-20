@@ -3,32 +3,49 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\TaskController;
-
-/*
-|--------------------------------------------------------------------------
-| API Routes - SIM Kinerja (v1)
-|--------------------------------------------------------------------------
-*/
+use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\DivisionController;
+use App\Http\Controllers\Api\V1\KpiController;
+use App\Http\Controllers\Api\V1\EvaluationController;
+use App\Http\Controllers\Api\V1\RoleController;
+use App\Http\Controllers\Api\V1\PermissionController;
+use App\Http\Controllers\Api\V1\AuditLogController;
 
 Route::prefix('v1')->group(function () {
 
-    // 1. Authentication Endpoints (Public)
+    // ==========================================
+    // Public Routes (Auth)
+    // ==========================================
     Route::post('/auth/login', [AuthController::class, 'login']);
 
-    // 2. Protected Endpoints (Perlu Token Sanctum)
+    // ==========================================
+    // Protected Routes (Harus Login / Sanctum)
+    // ==========================================
     Route::middleware('auth:sanctum')->group(function () {
 
-        // Auth User Info & Logout
-        Route::get('/auth/me', [AuthController::class, 'me']);
+        // Auth Session & Profile
         Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::get('/auth/me', [AuthController::class, 'me']);
 
-        // Task Management Endpoints
-        Route::get('/tasks', [TaskController::class, 'index']);
-        Route::post('/tasks', [TaskController::class, 'store']);
-        Route::get('/tasks/{id}', [TaskController::class, 'show']);
-        Route::post('/tasks/{id}/submit', [TaskController::class, 'submit']);
+        // Tasks Management (CRUD Lengkap + Review & Submit)
+        Route::apiResource('tasks', TaskController::class);
         Route::post('/tasks/{id}/review', [TaskController::class, 'review']);
+        Route::post('/tasks/{id}/submit', [TaskController::class, 'submit']);
 
+        // Users & Roles Management
+        Route::apiResource('users', UserController::class);
+        Route::apiResource('roles', RoleController::class);
+        Route::get('/permissions', [PermissionController::class, 'index']);
+
+        // Master Data (Divisions & KPIs)
+        Route::apiResource('divisions', DivisionController::class);
+        Route::apiResource('kpis', KpiController::class);
+
+        // Performance Evaluations Management
+        Route::get('/evaluations/me', [EvaluationController::class, 'myEvaluation']);
+        Route::apiResource('evaluations', EvaluationController::class);
+
+        // Audit Logs (Aman dengan Controller & Middleware Permission)
+        Route::get('/activity-logs', [AuditLogController::class, 'index'])->middleware('permission:activity-log.view');
     });
-
 });

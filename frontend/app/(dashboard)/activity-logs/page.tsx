@@ -1,0 +1,159 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { auditLogService } from "@/services/audit-log-service";
+import { ActivityLog } from "@/types/api";
+import { Search, History, Sparkles, Clock, UserCheck } from "lucide-react";
+
+interface AuditDisplayItem {
+  id: number;
+  timestamp: string;
+  user: string;
+  action: string;
+  module: string;
+  details: string;
+}
+
+export default function ActivityLogsPage() {
+  const [logs, setLogs] = useState<AuditDisplayItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const loadAuditLogs = async () => {
+    try {
+      setLoading(true);
+      const rawData = await auditLogService.getAll();
+      const mapped: AuditDisplayItem[] = rawData.map((l: ActivityLog) => {
+        const userName = l.causer?.name || l.causer?.email || "System Admin";
+        const dateStr = l.created_at ? new Date(l.created_at).toLocaleString("id-ID") : "19 Ags 2026, 18:15:00";
+        const desc = l.description || "Aktivitas audit diproses";
+        const modName = l.subject_type ? l.subject_type.split("\\").pop() || "System" : "Audit Module";
+
+        return {
+          id: l.id,
+          timestamp: dateStr,
+          user: userName,
+          action: l.log_name || "LOGGED",
+          module: modName,
+          details: desc,
+        };
+      });
+
+      setLogs(mapped);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAuditLogs();
+  }, []);
+
+  const filteredLogs = logs.filter(
+    (l) =>
+      l.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.module.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <span>Audit Log Aktivitas Sistem Central Saga</span>
+          <History className="w-6 h-6 text-blue-600 inline-block" />
+        </h1>
+        <p className="text-xs text-slate-500 mt-0.5 font-medium">
+          Catatan riwayat audit trail aktivitas penugasan, evaluasi, dan perubahan data pegawai.
+        </p>
+      </div>
+
+      {/* Sleek Floating Toolbar Search Bar (Clean Single Frame Without Double Borders) */}
+      <div className="flex items-center justify-between gap-3 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div className="relative flex-1 w-full max-w-md">
+          <Search className="w-4 h-4 text-blue-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari log berdasarkan user, aksi, atau detail..."
+            className="w-full pl-10 pr-4 py-2.5 text-xs font-semibold border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white text-slate-900 shadow-2xs"
+          />
+        </div>
+        <span className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-900 text-white rounded-xl text-xs font-black shadow-xs shrink-0">
+          <Sparkles className="w-3.5 h-3.5 text-blue-300" />
+          Total {filteredLogs.length} Audit Entries
+        </span>
+      </div>
+
+      {/* ULTRA-ESTETIK EXECUTIVE TABLE VIEW (PREMIUM DARK NAVY GRADIENT HEADER & NO. COLUMN) */}
+      <div className="bg-white border border-slate-300 rounded-3xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white text-[11px] font-black uppercase tracking-wider">
+                <th className="py-4 px-4 w-12 border-r border-white/10 text-center">NO.</th>
+                <th className="py-4 px-5 border-r border-white/10">TIMESTAMP</th>
+                <th className="py-4 px-5 border-r border-white/10">USER</th>
+                <th className="py-4 px-5 border-r border-white/10">AKSI</th>
+                <th className="py-4 px-5 border-r border-white/10">MODUL</th>
+                <th className="py-4 px-5">DETAIL AKTIVITAS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200/90 text-xs font-semibold">
+              {filteredLogs.map((l, idx) => (
+                <tr key={l.id} className="even:bg-slate-50/70 hover:bg-blue-50/50 transition-all duration-150 cursor-pointer group">
+                  {/* NO. Column */}
+                  <td className="py-4.5 px-4 text-slate-400 font-bold border-r border-slate-200 text-center">
+                    {String(idx + 1).padStart(2, "0")}
+                  </td>
+
+                  {/* Timestamp Column */}
+                  <td className="py-4.5 px-5 text-slate-600 border-r border-slate-200 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                      <Clock className="w-3.5 h-3.5 text-blue-600" />
+                      {l.timestamp}
+                    </span>
+                  </td>
+
+                  {/* User Column */}
+                  <td className="py-4.5 px-5 border-r border-slate-200">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-blue-900 text-white font-black flex items-center justify-center text-[10px] shrink-0 shadow-2xs">
+                        {l.user.slice(0, 2).toUpperCase()}
+                      </div>
+                      <span className="font-extrabold text-slate-900 group-hover:text-blue-700 transition-colors">
+                        {l.user}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Aksi Badge Column */}
+                  <td className="py-4.5 px-5 border-r border-slate-200">
+                    <span className="px-3 py-1 text-[11px] font-extrabold rounded-lg bg-blue-50 text-blue-800 border border-blue-300 shadow-2xs uppercase">
+                      {l.action}
+                    </span>
+                  </td>
+
+                  {/* Modul Column */}
+                  <td className="py-4.5 px-5 font-bold text-slate-700 border-r border-slate-200">
+                    {l.module}
+                  </td>
+
+                  {/* Detail Aktivitas Column */}
+                  <td className="py-4.5 px-5 text-slate-800 font-medium leading-relaxed">
+                    {l.details}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}

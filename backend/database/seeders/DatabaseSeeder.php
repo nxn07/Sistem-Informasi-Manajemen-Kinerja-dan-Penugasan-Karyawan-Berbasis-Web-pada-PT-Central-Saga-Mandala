@@ -2,77 +2,69 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
 use App\Models\Division;
 use App\Models\Employee;
+use App\Models\KpiCriteria;
+use App\Models\PerformanceEvaluation;
+use App\Models\Task;
+use App\Models\TaskSubmission;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Jalankan Role & Permission Seeder First
-        $this->call([
-            RoleAndPermissionSeeder::class,
+        // 1. Model: Division
+        $divisions = Division::factory(5)->create();
+
+        // 2. Model: User & Employee Manager Utama (Admin/Manager Default)
+        $adminUser = User::factory()->create([
+            'username' => 'Admin System',
+            'email'    => 'admin@gmail.com',
+            'password' => Hash::make('password'),
+            'role'     => 'ADMIN',
         ]);
 
-        // 2. Divisi Contoh
-        $itDiv = Division::create(['name' => 'IT & Engineering', 'description' => 'Departemen Teknologi Informasi']);
-        $hrDiv = Division::create(['name' => 'Human Resources', 'description' => 'Departemen SDM']);
-
-        // 3. User & Employee ADMIN
-        $adminUser = User::create([
-            'username' => 'admin',
-            'email' => 'admin@sim.com',
-            'password' => Hash::make('password123'),
-            'role' => 'ADMIN',
-        ]);
-        $adminUser->assignRole('admin'); // Assign Spatie Role
-
-        Employee::create([
-            'user_id' => $adminUser->id,
-            'division_id' => $hrDiv->id,
-            'nik' => 'ADM001',
-            'full_name' => 'Administrator System',
-            'phone' => '081234567890',
-            'position' => 'HR Specialist & Admin',
+        $managerEmployee = Employee::factory()->create([
+            'user_id'     => $adminUser->id,
+            'division_id' => $divisions->first()->id,
+            'nik'         => '199001012026081001',
+            'full_name'   => 'Manager Utama',
+            'position'    => 'Manager',
         ]);
 
-        // 4. User & Employee MANAGER
-        $managerUser = User::create([
-            'username' => 'manager_it',
-            'email' => 'manager@sim.com',
-            'password' => Hash::make('password123'),
-            'role' => 'MANAGER',
-        ]);
-        $managerUser->assignRole('manager'); // Assign Spatie Role
+        // 3. Model: Employee (10 Karyawan Tambahan)
+        $staffEmployees = Employee::factory(10)->recycle($divisions)->create();
 
-        Employee::create([
-            'user_id' => $managerUser->id,
-            'division_id' => $itDiv->id,
-            'nik' => 'MGR001',
-            'full_name' => 'Manajer IT',
-            'phone' => '081234567891',
-            'position' => 'IT Lead Manager',
-        ]);
+        // 4. Model: KpiCriteria
+        $kpiCriteriaList = KpiCriteria::factory(5)->create();
 
-        // 5. User & Employee KARYAWAN
-        $karyawanUser = User::create([
-            'username' => 'karyawan1',
-            'email' => 'karyawan@sim.com',
-            'password' => Hash::make('password123'),
-            'role' => 'KARYAWAN',
-        ]);
-        $karyawanUser->assignRole('employee'); // Assign Spatie Role
+        // 5. Model: Task (15 Task dibuat oleh Manager untuk Karyawan)
+        $tasks = Task::factory(15)->create([
+            'created_by_manager_id' => $managerEmployee->id,
+        ])->each(function ($task) use ($staffEmployees) {
+            $task->update(['assigned_employee_id' => $staffEmployees->random()->id]);
+        });
 
-        Employee::create([
-            'user_id' => $karyawanUser->id,
-            'division_id' => $itDiv->id,
-            'nik' => 'EMP001',
-            'full_name' => 'Budi Santoso',
-            'phone' => '081234567892',
-            'position' => 'Software Engineer',
-        ]);
+        // 6. Model: TaskSubmission & PerformanceEvaluation
+        foreach ($tasks as $task) {
+            // Buat submission untuk tiap task
+            TaskSubmission::factory()->create([
+                'task_id'     => $task->id,
+                'employee_id' => $task->assigned_employee_id,
+            ]);
+
+            // Jika status COMPLETED, buatkan evaluasi kinerjanya
+            if ($task->status === 'COMPLETED') {
+                PerformanceEvaluation::factory()->create([
+                    'task_id'              => $task->id,
+                    'employee_id'          => $task->assigned_employee_id,
+                    'evaluator_manager_id' => $managerEmployee->id,
+                    'kpi_criteria_id'      => $kpiCriteriaList->random()->id,
+                ]);
+            }
+        }
     }
 }

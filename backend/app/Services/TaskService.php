@@ -2,34 +2,87 @@
 
 namespace App\Services;
 
-use App\Repositories\TaskRepository;
+use App\Models\Employee;
 use App\Models\Task;
 use App\Models\TaskSubmission;
-use App\Models\Employee;
 use App\Notifications\TaskAssignedNotification;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskServiceInterface;
+use Illuminate\Support\Facades\Cache;
 
-class TaskService
+class TaskService implements TaskServiceInterface
 {
-    protected TaskRepository $taskRepository;
+    const CACHE_KEY_ALL = 'tasks_all';
+    const CACHE_TTL = 3600;
 
-    public function __construct(TaskRepository $taskRepository)
-    {
+    protected TaskRepositoryInterface $taskRepository;
+    protected TaskSubmissionService $submissionService;
+
+    public function __construct(
+        TaskRepositoryInterface $taskRepository,
+        TaskSubmissionService $submissionService
+    ) {
         $this->taskRepository = $taskRepository;
+        $this->submissionService = $submissionService;
+    }
+
+    protected function clearCache(?int $id = null): void
+    {
+        Cache::forget(self::CACHE_KEY_ALL);
+        if ($id) {
+            Cache::forget("tasks_{$id}");
+        }
+    }
+
+    public function getAllTasks()
+    {
+        return $this->taskRepository->getAll();
+    }
+
+    public function getTaskById(int $id)
+    {
+        return $this->taskRepository->findById($id);
+    }
+
+    public function createTask(array $data)
+    {
+        $task = $this->taskRepository->create($data);
+        $this->clearCache();
+        return $task;
+    }
+
+    public function updateTask(int $id, array $data)
+    {
+        $task = $this->taskRepository->update($id, $data);
+        $this->clearCache($id);
+        return $task;
+    }
+
+    public function deleteTask(int $id)
+    {
+        $deleted = $this->taskRepository->delete($id);
+        $this->clearCache($id);
+        return $deleted;
     }
 
     public function assignTask(array $data, int $assignedByUserId): Task
     {
-        $data['assigned_by'] = $assignedByUserId;
-        $data['status'] = 'Pending';
+        $data['created_by_manager_id'] = $assignedByUserId;
+        $data['assigned_employee_id'] = $data['assigned_employee_id'] ?? $data['employee_id'] ?? null;
+        $data['deadline'] = $data['deadline'] ?? $data['due_date'] ?? null;
+        $data['weight'] = $data['weight'] ?? $data['weight_score'] ?? 5;
+        $data['status'] = 'PENDING';
+
+        unset($data['due_date'], $data['weight_score'], $data['employee_id']);
 
         $task = $this->taskRepository->create($data);
+        $this->clearCache();
 
-        // Memicu notifikasi in-app ke pegawai yang diberi tugas
-        $employee = Employee::find($data['employee_id']);
-        if ($employee && $employee->user) {
-            $employee->user->notify(new TaskAssignedNotification($task));
+        if (!empty($data['assigned_employee_id'])) {
+            $employee = Employee::find($data['assigned_employee_id']);
+            if ($employee && $employee->user) {
+                $employee->user->notify(new TaskAssignedNotification($task));
+            }
         }
 
         return $task;
@@ -37,42 +90,11 @@ class TaskService
 
     public function submitTask(Task $task, array $submissionData): TaskSubmission
     {
-        return DB::transaction(function () use ($task, $submissionData) {
-            $now = Carbon::now();
-            $isLate = $now->greaterThan(Carbon::parse($task->due_date));
-
-            // Jika terlambat, potong bobot poin sebesar 10%
-            if ($isLate) {
-                $penaltyWeight = max(0, $task->weight_score * 0.9);
-                $task->update(['weight_score' => $penaltyWeight]);
-            }
-
-            $submission = $task->submissions()->create([
-                'submission_file' => $submissionData['file_path'] ?? null,
-                'submission_link' => $submissionData['link'] ?? null,
-                'notes'           => $submissionData['notes'] ?? null,
-                'submitted_at'    => $now,
-            ]);
-
-            $this->taskRepository->updateStatus($task, 'Submitted');
-
-            return $submission;
-        });
+        return $this->submissionService->submitTask($task, $submissionData);
     }
 
     public function reviewTask(Task $task, string $status, ?string $reviewNotes, int $reviewerId): bool
     {
-        return DB::transaction(function () use ($task, $status, $reviewNotes, $reviewerId) {
-            $latestSubmission = $task->submissions()->latest()->first();
-
-            if ($latestSubmission) {
-                $latestSubmission->update([
-                    'reviewed_by'  => $reviewerId,
-                    'review_notes' => $reviewNotes,
-                ]);
-            }
-
-            return $this->taskRepository->updateStatus($task, $status);
-        });
+        return $this->submissionService->reviewTask($task, $status, $reviewNotes, $reviewerId);
     }
 }
