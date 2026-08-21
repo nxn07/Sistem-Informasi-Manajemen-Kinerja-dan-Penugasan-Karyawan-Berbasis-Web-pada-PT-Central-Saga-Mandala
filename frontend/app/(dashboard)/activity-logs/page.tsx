@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { auditLogService } from "@/services/audit-log-service";
 import { ActivityLog } from "@/types/api";
-import { Search, History, Sparkles, Clock, UserCheck } from "lucide-react";
+import { Search, History, Sparkles, Clock } from "lucide-react";
 
 interface AuditDisplayItem {
   id: number;
@@ -12,18 +12,22 @@ interface AuditDisplayItem {
   action: string;
   module: string;
   details: string;
+  isNew?: boolean;
 }
 
 export default function ActivityLogsPage() {
   const [logs, setLogs] = useState<AuditDisplayItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const isFirstLoadRef = useRef(true);
 
   const loadAuditLogs = async () => {
     try {
-      setLoading(true);
+      if (isFirstLoadRef.current) {
+        setLoading(true);
+      }
       const rawData = await auditLogService.getAll();
-      const mapped: AuditDisplayItem[] = rawData.map((l: ActivityLog) => {
+      const mapped: AuditDisplayItem[] = rawData.map((l: ActivityLog, idx: number) => {
         const userName = l.causer?.name || l.causer?.email || "System Admin";
         const dateStr = l.created_at ? new Date(l.created_at).toLocaleString("id-ID") : "19 Ags 2026, 18:15:00";
         const desc = l.description || "Aktivitas audit diproses";
@@ -36,6 +40,8 @@ export default function ActivityLogsPage() {
           action: l.log_name || "LOGGED",
           module: modName,
           details: desc,
+          // The top-most (most recent) log entry ALWAYS keeps 'isNew: true' until a newer log arrives!
+          isNew: idx === 0,
         };
       });
 
@@ -43,17 +49,26 @@ export default function ActivityLogsPage() {
     } catch {
       // ignore
     } finally {
-      setLoading(false);
+      if (isFirstLoadRef.current) {
+        setLoading(false);
+        isFirstLoadRef.current = false;
+      }
     }
   };
 
   useEffect(() => {
     loadAuditLogs();
-    // Auto-refresh audit logs every 3 seconds in real-time
+    // Mark sidebar badge counter as read upon visiting page
+    auditLogService.markAsRead();
+
+    // Auto-refresh audit logs every 2 seconds in real-time silently
     const interval = setInterval(() => {
       loadAuditLogs();
-    }, 3000);
-    return () => clearInterval(interval);
+    }, 2000);
+
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
   const filteredLogs = logs.filter(
@@ -83,11 +98,11 @@ export default function ActivityLogsPage() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>
-          <span>Live Auto-Sync Realtime (3s)</span>
+          <span>Live Auto-Sync Realtime (2s)</span>
         </div>
       </div>
 
-      {/* Sleek Floating Toolbar Search Bar (Clean Single Frame Without Double Borders) */}
+      {/* Sleek Floating Toolbar Search Bar */}
       <div className="flex items-center justify-between gap-3 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/90 shadow-2xs">
         <div className="relative flex-1 w-full max-w-md">
           <Search className="w-4 h-4 text-blue-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -105,7 +120,7 @@ export default function ActivityLogsPage() {
         </span>
       </div>
 
-      {/* ULTRA-ESTETIK EXECUTIVE TABLE VIEW (PREMIUM DARK NAVY GRADIENT HEADER & NO. COLUMN) */}
+      {/* ULTRA-ESTETIK EXECUTIVE TABLE VIEW */}
       <div className="bg-white border border-slate-300 rounded-3xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -121,7 +136,14 @@ export default function ActivityLogsPage() {
             </thead>
             <tbody className="divide-y divide-slate-200/90 text-xs font-semibold">
               {filteredLogs.map((l, idx) => (
-                <tr key={l.id} className="even:bg-slate-50/70 hover:bg-blue-50/50 transition-all duration-150 cursor-pointer group">
+                <tr
+                  key={l.id}
+                  className={`transition-all duration-150 cursor-pointer group ${
+                    l.isNew
+                      ? "bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-white border-l-4 border-l-blue-600 font-bold"
+                      : "even:bg-slate-50/70 hover:bg-blue-50/50"
+                  }`}
+                >
                   {/* NO. Column */}
                   <td className="py-4.5 px-4 text-slate-400 font-bold border-r border-slate-200 text-center">
                     {String(idx + 1).padStart(2, "0")}
@@ -129,10 +151,17 @@ export default function ActivityLogsPage() {
 
                   {/* Timestamp Column */}
                   <td className="py-4.5 px-5 text-slate-600 border-r border-slate-200 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                      <Clock className="w-3.5 h-3.5 text-blue-600" />
-                      {l.timestamp}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                        <Clock className="w-3.5 h-3.5 text-blue-600" />
+                        {l.timestamp}
+                      </span>
+                      {l.isNew && (
+                        <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-blue-600 text-white shadow-2xs animate-pulse shrink-0">
+                          ✨ BARU
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* User Column */}

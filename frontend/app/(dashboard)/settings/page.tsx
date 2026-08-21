@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { auditLogService } from "@/services/audit-log-service";
 import { Toast } from "@/components/ui/Toast";
 import {
   Settings as SettingsIcon,
@@ -19,6 +21,7 @@ import {
 } from "lucide-react";
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"general" | "notification" | "backup" | "security">("general");
   const [appName, setAppName] = useState("Performa.id - Central Saga");
   const [timezone, setTimezone] = useState("Asia/Jakarta (WIB - UTC+7)");
@@ -49,6 +52,12 @@ export default function SettingsPage() {
       return;
     }
     setConfigError(null);
+    auditLogService.logActivity(
+      user?.name,
+      "SETTINGS_UPDATED",
+      "App\\Models\\SystemConfig",
+      `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) memperbarui konfigurasi umum & server email`
+    );
     setToast({
       type: "success",
       message: "Pengaturan umum & konfigurasi server Central Saga berhasil disimpan!",
@@ -83,6 +92,13 @@ INSERT INTO users (id, name, email, role) VALUES
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    auditLogService.logActivity(
+      user?.name,
+      "DATABASE_BACKUP",
+      "App\\Models\\Database",
+      `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) mendownload dump cadangan database PostgreSQL`
+    );
 
     setToast({
       type: "success",
@@ -126,7 +142,7 @@ INSERT INTO users (id, name, email, role) VALUES
         </p>
       </div>
 
-      {/* Tab Navigation (Sleek Segmented Floating Control Pill) */}
+      {/* Tab Navigation (PROMINENT PERMANENT DARK SLATE CONTROL BOXES) */}
       <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/90 shadow-2xs text-xs font-bold">
         {[
           { id: "general", label: "General Settings", icon: Globe },
@@ -142,11 +158,11 @@ INSERT INTO users (id, name, email, role) VALUES
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 py-2.5 px-4 rounded-xl transition-all cursor-pointer ${
                 isActive
-                  ? "bg-white text-blue-950 font-black shadow-2xs border border-slate-200/80"
-                  : "text-slate-600 hover:text-slate-900 font-semibold"
+                  ? "bg-slate-900 text-white font-extrabold shadow-md border border-slate-900 scale-102"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 font-semibold"
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? "text-blue-700" : "text-slate-400"}`} />
+              <Icon className={`w-4 h-4 ${isActive ? "text-blue-400" : "text-slate-400"}`} />
               <span>{tab.label}</span>
             </button>
           );
@@ -207,7 +223,7 @@ INSERT INTO users (id, name, email, role) VALUES
                 <div className="pt-3 border-t border-slate-200 flex justify-end">
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-blue-900 hover:bg-blue-950 text-white rounded-xl font-bold transition-all shadow-md cursor-pointer border border-blue-950"
+                    className="px-5 py-2.5 bg-slate-900 hover:bg-blue-600 active:scale-98 text-white rounded-xl font-extrabold transition-all shadow-md cursor-pointer border border-slate-900"
                   >
                     Simpan Perubahan
                   </button>
@@ -352,11 +368,13 @@ INSERT INTO users (id, name, email, role) VALUES
           )}
         </div>
 
-        {/* Right 1 Col: Database Backup Download Box (Crisp 1px Border & Shadow) */}
-        <div className="bg-white border border-slate-300 rounded-3xl shadow-md hover:shadow-xl transition-shadow duration-300 p-6 space-y-5 h-fit">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl border border-blue-200 shadow-2xs">
-              <Database className="w-5 h-5" />
+        {/* Right 1 Col: Database Backup Download Box (ULTRA-AESTHETIC EXECUTIVE CARD) */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 space-y-5 h-fit relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all pointer-events-none" />
+
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-900 to-indigo-800 text-white flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
+              <Database className="w-5 h-5 text-white" />
             </div>
             <div>
               <h3 className="font-extrabold text-slate-900 text-sm">
@@ -366,7 +384,7 @@ INSERT INTO users (id, name, email, role) VALUES
             </div>
           </div>
 
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs shadow-2xs">
+          <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2 text-xs shadow-2xs">
             <div className="flex items-center justify-between text-slate-500 font-bold">
               <span>Status Backup:</span>
               <span className="font-black text-emerald-600 flex items-center gap-1">
@@ -381,17 +399,17 @@ INSERT INTO users (id, name, email, role) VALUES
           <div className="space-y-2.5">
             <button
               onClick={handleRunBackup}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-300 shadow-2xs"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-blue-600 text-white rounded-xl text-xs font-extrabold transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
             >
-              <Download className="w-4 h-4 text-blue-600" />
+              <Download className="w-4 h-4 text-blue-300" />
               <span>Download Backup (.sql)</span>
             </button>
 
             <button
               onClick={handleRunBackup}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-900 hover:bg-blue-950 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer border border-blue-950"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-900 rounded-xl text-xs font-extrabold transition-all cursor-pointer border border-blue-200 shadow-2xs"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4 text-blue-600" />
               <span>Jalankan Backup Manual</span>
             </button>
           </div>

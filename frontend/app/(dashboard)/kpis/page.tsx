@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { auditLogService } from "@/services/audit-log-service";
 import { Toast } from "@/components/ui/Toast";
 import { kpiService } from "@/services/kpi-service";
 import { KpiCriteria } from "@/types/api";
 import { Target, Plus, PieChart, X, Edit3, Trash2 } from "lucide-react";
 
 export default function KpiPage() {
+  const { user } = useAuth();
   const [kpiList, setKpiList] = useState<KpiCriteria[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedKpiForEdit, setSelectedKpiForEdit] = useState<KpiCriteria | null>(null);
@@ -14,7 +17,7 @@ export default function KpiPage() {
 
   // Form State
   const [nameInput, setNameInput] = useState("");
-  const [weightInput, setWeightInput] = useState(20);
+  const [weightInput, setWeightInput] = useState<number>(15);
   const [descriptionInput, setDescriptionInput] = useState("");
 
   const [toast, setToast] = useState<{
@@ -68,6 +71,12 @@ export default function KpiPage() {
       );
 
       setSelectedKpiForEdit(null);
+      auditLogService.logActivity(
+        user?.name,
+        "KPI_UPDATED",
+        "App\\Models\\KpiCriteria",
+        `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) memperbarui kriteria KPI '${nameInput}' (Bobot: ${weightInput}%)`
+      );
       setToast({
         type: "success",
         message: `Indikator KPI '${nameInput}' berhasil diperbarui!`,
@@ -98,6 +107,12 @@ export default function KpiPage() {
       setNameInput("");
       setWeightInput(15);
       setDescriptionInput("");
+      auditLogService.logActivity(
+        user?.name,
+        "KPI_CREATED",
+        "App\\Models\\KpiCriteria",
+        `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) membuat kriteria KPI baru '${nameInput}' (Bobot: ${weightInput}%)`
+      );
       setToast({
         type: "success",
         message: `Indikator KPI baru '${nameInput}' berhasil ditambahkan!`,
@@ -116,6 +131,12 @@ export default function KpiPage() {
       try {
         await kpiService.delete(id);
         setKpiList((prev) => prev.filter((k) => k.id !== id));
+        auditLogService.logActivity(
+          user?.name,
+          "KPI_DELETED",
+          "App\\Models\\KpiCriteria",
+          `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) menghapus kriteria KPI '${displayName}'`
+        );
         setToast({
           type: "success",
           message: `Indikator KPI '${displayName}' berhasil dihapus!`,
@@ -191,8 +212,8 @@ export default function KpiPage() {
         </div>
       </div>
 
-      {/* KPI Cards Grid (Crisp 1px Border & Floating Shadow) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* KPI Cards Grid (ULTRA-AESTHETIC EXECUTIVE CARDS) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {kpiList.map((item) => {
           const displayName = item.criteria_name || item.name || "Kriteria";
           const displayWeight = item.weight_percentage || item.weight || 0;
@@ -200,37 +221,60 @@ export default function KpiPage() {
           return (
             <div
               key={item.id}
-              className="p-5 bg-white border border-slate-300 rounded-2xl shadow-sm hover:shadow-lg hover:border-purple-400 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+              className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-purple-500/80 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden"
             >
+              {/* Ambient Background Sheen */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-all pointer-events-none" />
+
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-3 py-1 text-xs font-extrabold bg-purple-50 text-purple-700 border border-purple-300 rounded-full shadow-2xs">
+                {/* Header Row: Weight Badge & Quick Action Buttons */}
+                <div className="flex items-center justify-between mb-4">
+                  <span className="px-3.5 py-1 text-xs font-black rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-xs tracking-wider uppercase">
                     Bobot: {displayWeight}%
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleOpenEdit(item)}
-                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-blue-200"
+                      className="p-2 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all border border-slate-200 hover:border-purple-300 cursor-pointer active:scale-95 shadow-2xs"
                       title="Edit KPI"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteKpi(item.id, displayName)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-rose-200"
+                      className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all border border-slate-200 hover:border-rose-300 cursor-pointer active:scale-95 shadow-2xs"
                       title="Hapus KPI"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                <h3 className="text-base font-extrabold text-slate-900 mb-1 flex items-center gap-2 group-hover:text-purple-700 transition-colors">
-                  <Target className="w-4 h-4 text-purple-600 shrink-0" />
-                  <span>{displayName}</span>
-                </h3>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  {item.description || "Penjelasan detail indikator penilaian."}
-                </p>
+
+                {/* Title & Icon Section */}
+                <div className="flex items-start gap-3.5 mb-2">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-900 to-indigo-800 text-white flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
+                    <Target className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight group-hover:text-purple-700 transition-colors line-clamp-1">
+                      {displayName}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1 line-clamp-2">
+                      {item.description || "Penjelasan detail indikator penilaian bulanan."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Info Tag */}
+              <div className="pt-3.5 mt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-extrabold bg-slate-100/90 text-slate-600 border border-slate-200/80 shadow-2xs">
+                  <PieChart className="w-3.5 h-3.5 text-purple-600" />
+                  Indikator Kinerja Resmi
+                </span>
+                <span className="text-[11px] font-black text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-lg border border-purple-200">
+                  Target Skor 100
+                </span>
               </div>
             </div>
           );

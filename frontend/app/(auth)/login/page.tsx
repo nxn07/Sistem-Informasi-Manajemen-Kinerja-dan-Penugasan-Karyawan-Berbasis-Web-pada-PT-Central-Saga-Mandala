@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { authService } from "@/services/auth-service";
 import { Toast } from "@/components/ui/Toast";
-import { Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2, KeyRound, CheckCircle2, X } from "lucide-react";
 import centralSagaLogo from "@/public/central-saga-logo.png";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  // Forgot Password Modal State
+  const [isForgotOpen, setIsForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -22,6 +28,20 @@ export default function LoginPage() {
     message: null,
   });
 
+  // Auto-fill Remembered Credentials on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedRemember = localStorage.getItem("simkap_remember_me");
+      if (savedRemember === "true") {
+        const savedEmail = localStorage.getItem("simkap_remember_email");
+        const savedPassword = localStorage.getItem("simkap_remember_password");
+        if (savedEmail) setEmail(savedEmail);
+        if (savedPassword) setPassword(savedPassword);
+        setRememberMe(true);
+      }
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -29,6 +49,20 @@ export default function LoginPage() {
 
     try {
       const { user } = await authService.login({ email, password });
+
+      // Save or Clear Remember Me credentials
+      if (typeof window !== "undefined") {
+        if (rememberMe) {
+          localStorage.setItem("simkap_remember_me", "true");
+          localStorage.setItem("simkap_remember_email", email);
+          localStorage.setItem("simkap_remember_password", password);
+        } else {
+          localStorage.removeItem("simkap_remember_me");
+          localStorage.removeItem("simkap_remember_email");
+          localStorage.removeItem("simkap_remember_password");
+        }
+      }
+
       setToast({
         type: "success",
         message: `Autentikasi Berhasil! Masuk sebagai ${user.name} (${user.role}). Mengalihkan...`,
@@ -47,6 +81,23 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleResetPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+
+    setTimeout(() => {
+      const targetEmail = resetEmail || "putra.timur804@gmail.com";
+      setResetLoading(false);
+      setResetSent(true);
+      setToast({
+        type: "success",
+        message: `Link Reset Password Berhasil Dikirim ke Email '${targetEmail}'! Silakan klik tombol di bawah untuk membuat password baru.`,
+      });
+    }, 600);
   };
 
   return (
@@ -92,7 +143,7 @@ export default function LoginPage() {
                 suppressHydrationWarning
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="nama@centralsaga.com"
+                placeholder="admin@gmail.com"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all"
               />
             </div>
@@ -118,22 +169,37 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="remember"
-              defaultChecked
-              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="remember" className="text-xs text-slate-600 font-medium cursor-pointer">
-              Remember Me
-            </label>
+          {/* Remember Me Checkbox & Lupa Password Link */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="remember"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <label htmlFor="remember" className="text-xs text-slate-700 font-bold cursor-pointer select-none">
+                Remember Me
+              </label>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setResetEmail(email || "admin@gmail.com");
+                setIsForgotOpen(true);
+              }}
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+            >
+              Lupa Password?
+            </button>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-blue-900 hover:bg-blue-950 active:scale-98 text-white font-bold rounded-xl text-xs flex items-center justify-center transition-all shadow-md disabled:opacity-50 cursor-pointer mt-2"
+            className="w-full py-3 bg-blue-900 hover:bg-blue-950 active:scale-98 text-white font-extrabold rounded-xl text-xs flex items-center justify-center transition-all shadow-md disabled:opacity-50 cursor-pointer mt-2"
           >
             {loading ? (
               <>
@@ -146,6 +212,158 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
+
+      {/* Modal Popup: Lupa Password & Kirim Link Reset Email */}
+      {isForgotOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 relative">
+            <button
+              onClick={() => {
+                setIsForgotOpen(false);
+                setResetSent(false);
+              }}
+              className="absolute right-5 top-5 text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl border border-blue-200">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 text-base">
+                  Pemulihan Lupa Password
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Kirim link token reset password ke email pegawai / manager
+                </p>
+              </div>
+            </div>
+
+            {!resetSent ? (
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5">
+                    Masukkan Email Pegawai / Manager / Admin
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
+                    <input
+                      type="email"
+                      required
+                      value={resetEmail || "putra.timur804@gmail.com"}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="putra.timur804@gmail.com"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Select Buttons for Target Emails */}
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+                  <p className="text-[11px] font-bold text-slate-500">Target Email Uji Coba Pemulihan:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setResetEmail("putra.timur804@gmail.com")}
+                      className="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-900 text-[11px] font-bold rounded-lg border border-blue-200 shadow-2xs cursor-pointer"
+                    >
+                      📧 putra.timur804@gmail.com (Default Uji Coba)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResetEmail("admin@gmail.com")}
+                      className="px-2.5 py-1 bg-white hover:bg-blue-50 text-slate-800 text-[11px] font-bold rounded-lg border border-slate-200 shadow-2xs cursor-pointer"
+                    >
+                      👑 admin@gmail.com
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResetEmail("sarah@gmail.com")}
+                      className="px-2.5 py-1 bg-white hover:bg-blue-50 text-slate-800 text-[11px] font-bold rounded-lg border border-slate-200 shadow-2xs cursor-pointer"
+                    >
+                      👤 sarah@gmail.com
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-[11px] text-blue-900 font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Sistem akan mengirim link tautan reset password unik ke email <strong>'{resetEmail || "putra.timur804@gmail.com"}'</strong>.</span>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white font-extrabold rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                  >
+                    {resetLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Mengirim Email...</span>
+                      </>
+                    ) : (
+                      <span>Kirim Link Reset Password</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Success Email Sent Banner & Direct Link Button */
+              <div className="space-y-4 text-xs">
+                <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl text-emerald-900 space-y-2 shadow-2xs">
+                  <div className="flex items-center gap-2 font-black text-sm text-emerald-800">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span>Link Reset Berhasil Terkirim!</span>
+                  </div>
+                  <p className="font-semibold text-xs leading-relaxed">
+                    Sistem telah mensimulasikan pengiriman link reset password ke email:
+                    <br />
+                    <strong className="text-emerald-950 font-black text-sm">{resetEmail || "putra.timur804@gmail.com"}</strong>
+                  </p>
+                  <p className="text-[11px] text-emerald-700 font-medium">
+                    Klik tombol di bawah ini untuk membuka tautan reset password dan membuat password baru Anda.
+                  </p>
+                </div>
+
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotOpen(false);
+                      setResetSent(false);
+                      router.push(`/reset-password?email=${encodeURIComponent(resetEmail || "putra.timur804@gmail.com")}&token=reset_token_demo_9921`);
+                    }}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
+                  >
+                    <span>🔗 Buka Link Reset Password Email</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotOpen(false);
+                      setResetSent(false);
+                    }}
+                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
+                  >
+                    Tutup Modal
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

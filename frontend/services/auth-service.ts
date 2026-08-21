@@ -1,6 +1,7 @@
 import apiClient from '@/lib/api-client';
 import { ApiResponse, User } from '@/types/api';
 import Cookies from 'js-cookie';
+import { auditLogService } from '@/services/audit-log-service';
 import { userService } from '@/services/user-service';
 
 export interface LoginPayload {
@@ -28,9 +29,18 @@ export const authService = {
       const cleanEmail = (payload.email || "").trim().toLowerCase();
       const cleanPassword = (payload.password || "").trim();
 
+      // Check if user has set a custom password via reset-password page
+      let expectedPassword = "password";
+      if (typeof window !== "undefined") {
+        const customPass = localStorage.getItem(`simkap_custom_password_${cleanEmail}`);
+        if (customPass) {
+          expectedPassword = customPass;
+        }
+      }
+
       // Strict credential check per role
-      if (cleanPassword !== "password") {
-        throw new Error("Gagal Masuk: Combination email atau password salah (401 Unauthorized).");
+      if (cleanPassword !== expectedPassword) {
+        throw new Error("Gagal Masuk: Kombinasi email atau password salah (401 Unauthorized).");
       }
 
       if (cleanEmail === "admin@gmail.com") {
@@ -46,6 +56,7 @@ export const authService = {
         const mockToken = `demo_token_ADMIN_${Date.now()}`;
         Cookies.set('simkap_token', mockToken, { expires: 7 });
         Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
+        auditLogService.logActivity(mockUser.name, "USER_LOGIN", "App\\Models\\User", `Pengguna '${mockUser.name}' (${mockUser.role}) berhasil masuk ke sistem`);
         return { token: mockToken, user: mockUser };
       }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { auditLogService } from "@/services/audit-log-service";
 import { Toast } from "@/components/ui/Toast";
 import { evaluationService } from "@/services/evaluation-service";
 import { PerformanceEvaluation } from "@/types/api";
@@ -144,6 +145,12 @@ export default function EvaluationsPage() {
 
       setEvaluations((prev) => [newEval, ...prev]);
       setIsCreateOpen(false);
+      auditLogService.logActivity(
+        user?.name,
+        "EVALUATION_CREATED",
+        "App\\Models\\PerformanceEvaluation",
+        `Pengguna '${user?.name || "Manager"}' (${user?.role || "MANAGER"}) menerbitkan evaluasi kinerja baru untuk '${selectedEmployeeName}' (Skor: ${calculatedFinalScore.toFixed(1)}, Grade: ${currentGrade})`
+      );
       setToast({
         type: "success",
         message: `Hasil Evaluasi Kinerja Pegawai '${selectedEmployeeName}' (Skor: ${calculatedFinalScore.toFixed(

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { auditLogService } from "@/services/audit-log-service";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { SubmitTaskModal } from "@/components/tasks/SubmitTaskModal";
 import { ReviewTaskModal } from "@/components/tasks/ReviewTaskModal";
@@ -234,6 +235,12 @@ export default function TasksPage() {
   const handleCreateTask = async (payload: any) => {
     try {
       await createTask(payload);
+      auditLogService.logActivity(
+        user?.name,
+        "TASK_CREATED",
+        "App\\Models\\Task",
+        `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) membuat tugas baru '${payload.title}'`
+      );
       setToast({
         type: "success",
         message: "Tugas Baru Berhasil Ditugaskan!",
@@ -253,6 +260,13 @@ export default function TasksPage() {
   ) => {
     try {
       await updateTaskStatus(taskId, newStatus);
+      const targetTask = tasks.find((t) => t.id === taskId);
+      auditLogService.logActivity(
+        user?.name,
+        "TASK_STATUS_UPDATED",
+        "App\\Models\\Task",
+        `Pengguna '${user?.name || "User"}' (${user?.role || "USER"}) mengubah status tugas '${targetTask?.title || `#${taskId}`}' menjadi '${newStatus}'`
+      );
       setToast({
         type: "success",
         message: `Status tugas berhasil diperbarui menjadi '${newStatus}'!`,
@@ -269,6 +283,12 @@ export default function TasksPage() {
     try {
       await submitTask(taskId, payload);
       const docTypeDetected = getDocTypeLabel(payload.file?.name || payload.submission_link);
+      auditLogService.logActivity(
+        user?.name,
+        "PROOF_SUBMITTED",
+        "App\\Models\\TaskSubmission",
+        `Pegawai '${user?.name || "Sarah Jenkins"}' (${user?.role || "EMPLOYEE"}) mengumpulkan bukti pekerjaan untuk tugas #${taskId}`
+      );
       setToast({
         type: "success",
         message: `Bukti Kerja '${payload.file?.name || "Dokumen"}' (${docTypeDetected}) Berhasil Perbaiki & Dikumpulkan Ulang! Terakhir Diubah: ${new Date().toLocaleString("id-ID")}`,
@@ -289,6 +309,12 @@ export default function TasksPage() {
   ) => {
     try {
       await reviewTask(taskId, status, notes);
+      auditLogService.logActivity(
+        user?.name,
+        "TASK_REVIEWED",
+        "App\\Models\\Task",
+        `Pengguna '${user?.name || "Manager"}' (${user?.role || "MANAGER"}) meninjau tugas #${taskId} (Hasil: ${status})`
+      );
       setToast({
         type: "success",
         message: `Hasil Review Berhasil Disimpan (${
@@ -306,7 +332,14 @@ export default function TasksPage() {
 
   const handleDelete = (id: number) => {
     if (confirm("Apakah Anda yakin ingin menghapus tugas ini?")) {
+      const targetTask = tasks.find((t) => t.id === id);
       deleteTask(id);
+      auditLogService.logActivity(
+        user?.name,
+        "TASK_DELETED",
+        "App\\Models\\Task",
+        `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) menghapus tugas '${targetTask?.title || `#${id}`}'`
+      );
       setToast({
         type: "success",
         message: "Tugas berhasil dihapus.",
@@ -431,64 +464,68 @@ export default function TasksPage() {
       )}
 
       {/* Metrics Banner (ULTRA-AESTHETIC EXECUTIVE CARDS) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-5 bg-gradient-to-br from-white to-slate-50/60 border border-slate-300 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-slate-400 transition-all duration-300 flex items-center justify-between group cursor-pointer">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-slate-400 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+          <div className="absolute top-0 right-0 w-28 h-28 bg-slate-500/5 rounded-full blur-xl group-hover:bg-slate-500/10 transition-all pointer-events-none" />
           <div>
-            <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
+            <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs uppercase tracking-wider">
               Status Pending
             </span>
-            <h3 className="text-3xl font-black text-slate-900 mt-2">
+            <h3 className="text-3xl font-black text-slate-900 mt-2.5 tracking-tight">
               {metrics.pending}
             </h3>
-            <p className="text-[11px] font-bold text-slate-500 mt-0.5">Total Pending</p>
+            <p className="text-[11px] font-extrabold text-slate-500 mt-0.5">Total Pending</p>
           </div>
-          <div className="p-3 bg-slate-100 text-slate-700 rounded-2xl border border-slate-200 shadow-2xs group-hover:bg-slate-900 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-            <Clock className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-900 to-slate-800 text-white flex items-center justify-center shadow-md group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
+            <Clock className="w-6 h-6 text-slate-200" />
           </div>
         </div>
 
-        <div className="p-5 bg-gradient-to-br from-white to-blue-50/30 border border-blue-300 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-500 transition-all duration-300 flex items-center justify-between group cursor-pointer">
+        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-blue-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+          <div className="absolute top-0 right-0 w-28 h-28 bg-blue-500/5 rounded-full blur-xl group-hover:bg-blue-500/10 transition-all pointer-events-none" />
           <div>
-            <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-blue-100 text-blue-800 border border-blue-200 shadow-2xs">
+            <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs uppercase tracking-wider">
               Sedang Dikerjakan
             </span>
-            <h3 className="text-3xl font-black text-blue-950 mt-2">
+            <h3 className="text-3xl font-black text-slate-900 mt-2.5 tracking-tight">
               {metrics.inProgress}
             </h3>
-            <p className="text-[11px] font-bold text-blue-900 mt-0.5">In Progress</p>
+            <p className="text-[11px] font-extrabold text-blue-700 mt-0.5">In Progress</p>
           </div>
-          <div className="p-3 bg-blue-50 text-blue-700 rounded-2xl border border-blue-200 shadow-2xs group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-            <Clock className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-900 to-indigo-800 text-white flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
+            <Clock className="w-6 h-6 text-white" />
           </div>
         </div>
 
-        <div className="p-5 bg-gradient-to-br from-white to-purple-50/30 border border-purple-300 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-purple-500 transition-all duration-300 flex items-center justify-between group cursor-pointer">
+        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-purple-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+          <div className="absolute top-0 right-0 w-28 h-28 bg-purple-500/5 rounded-full blur-xl group-hover:bg-purple-500/10 transition-all pointer-events-none" />
           <div>
-            <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-purple-100 text-purple-800 border border-purple-200 shadow-2xs">
+            <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-xs uppercase tracking-wider">
               Menunggu Review
             </span>
-            <h3 className="text-3xl font-black text-purple-950 mt-2">
+            <h3 className="text-3xl font-black text-slate-900 mt-2.5 tracking-tight">
               {metrics.awaitingApproval}
             </h3>
-            <p className="text-[11px] font-bold text-purple-900 mt-0.5">Awaiting Approval</p>
+            <p className="text-[11px] font-extrabold text-purple-700 mt-0.5">Awaiting Approval</p>
           </div>
-          <div className="p-3 bg-purple-50 text-purple-700 rounded-2xl border border-purple-200 shadow-2xs group-hover:bg-purple-600 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-            <CheckSquare className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-900 to-indigo-800 text-white flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
+            <CheckSquare className="w-6 h-6 text-white" />
           </div>
         </div>
 
-        <div className="p-5 bg-gradient-to-br from-white to-emerald-50/30 border border-emerald-300 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-emerald-500 transition-all duration-300 flex items-center justify-between group cursor-pointer">
+        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-emerald-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+          <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition-all pointer-events-none" />
           <div>
-            <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+            <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs uppercase tracking-wider">
               Disetujui & Selesai
             </span>
-            <h3 className="text-3xl font-black text-emerald-950 mt-2">
+            <h3 className="text-3xl font-black text-slate-900 mt-2.5 tracking-tight">
               {metrics.approved}
             </h3>
-            <p className="text-[11px] font-bold text-emerald-900 mt-0.5">Approved & Done</p>
+            <p className="text-[11px] font-extrabold text-emerald-700 mt-0.5">Approved & Done</p>
           </div>
-          <div className="p-3 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-200 shadow-2xs group-hover:bg-emerald-600 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-            <CheckSquare className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-900 to-teal-800 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
+            <CheckSquare className="w-6 h-6 text-white" />
           </div>
         </div>
       </div>

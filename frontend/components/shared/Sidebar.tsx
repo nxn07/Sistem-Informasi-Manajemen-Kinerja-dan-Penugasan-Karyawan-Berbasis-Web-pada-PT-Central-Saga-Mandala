@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/services/auth-service";
+import { auditLogService } from "@/services/audit-log-service";
 import centralSagaLogo from "@/public/central-saga-logo.png";
 import {
   LayoutDashboard,
@@ -25,13 +27,61 @@ const menuItems = [
   { name: "Master Divisi", href: "/divisions", icon: Building2, roles: ["ADMIN"], permission: "divisions.manage" },
   { name: "Kriteria KPI", href: "/kpis", icon: Target, roles: ["ADMIN"], permission: "kpis.manage" },
   { name: "Manajemen User", href: "/users", icon: Users, roles: ["ADMIN", "MANAGER"], permission: "users.delete" },
-  { name: "Audit Log", href: "/activity-logs", icon: History, roles: ["ADMIN"], permission: "logs.view" },
-  { name: "Pengaturan", href: "/settings", icon: Settings, roles: ["ADMIN"] },
+  { name: "Audit Log", href: "/activity-logs", icon: History, roles: ["ADMIN", "MANAGER"] },
+  { name: "Pengaturan & Profil", href: "/settings", icon: Settings, roles: ["ADMIN", "MANAGER", "EMPLOYEE"] },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const [logCount, setLogCount] = useState<number>(0);
+  const [avatar, setAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadAvatar = () => {
+      if (user?.email && typeof window !== "undefined") {
+        const cleanEmail = user.email.trim().toLowerCase();
+        const saved = localStorage.getItem(`simkap_user_avatar_${cleanEmail}`);
+        if (saved) setAvatar(saved);
+      }
+    };
+    loadAvatar();
+
+    const handleStorage = () => loadAvatar();
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("simkap_user_updated", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("simkap_user_updated", handleStorage);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    const updateCount = async () => {
+      try {
+        if (pathname === "/activity-logs") {
+          setLogCount(0);
+          return;
+        }
+        const count = await auditLogService.getUnreadCount();
+        setLogCount(count);
+      } catch {
+        // ignore
+      }
+    };
+    updateCount();
+
+    const handleAuditUpdate = () => updateCount();
+    window.addEventListener("simkap_audit_updated", handleAuditUpdate);
+    window.addEventListener("storage", handleAuditUpdate);
+    const interval = setInterval(updateCount, 2000);
+
+    return () => {
+      window.removeEventListener("simkap_audit_updated", handleAuditUpdate);
+      window.removeEventListener("storage", handleAuditUpdate);
+      clearInterval(interval);
+    };
+  }, [pathname]);
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between p-4 shrink-0 border-r border-slate-800">
@@ -78,24 +128,42 @@ export default function Sidebar() {
                 ? userPerms.includes(item.permission) || userPerms.includes("*")
                 : false;
 
-              return hasRoleMatch || hasPermMatch;
+              if (item.permission) {
+                return hasRoleMatch || hasPermMatch;
+              }
+
+              return hasRoleMatch;
             })
             .map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
+              const isAuditLog = item.name === "Audit Log";
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                     isActive
                       ? "bg-blue-600 text-white shadow-md font-bold"
                       : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
-                  <span>{item.name}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
+                    <span>{item.name}</span>
+                  </div>
+                  {isAuditLog && logCount > 0 && (
+                    <span
+                      className={`px-2 py-0.5 text-[10px] font-black rounded-full shadow-2xs transition-all ${
+                        isActive
+                          ? "bg-white text-blue-700"
+                          : "bg-blue-600 text-white"
+                      }`}
+                    >
+                      {logCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -105,8 +173,12 @@ export default function Sidebar() {
       {/* User Footer & Logout */}
       <div className="pt-4 border-t border-slate-800 space-y-3">
         <div className="px-3 py-2 bg-slate-800/80 rounded-xl border border-slate-700/60 shadow-xs flex items-center gap-2 text-xs">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shadow-2xs">
-            {user?.name?.slice(0, 2).toUpperCase() || "CS"}
+          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shadow-2xs overflow-hidden border border-blue-400/30 shrink-0">
+            {avatar ? (
+              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              user?.name?.slice(0, 2).toUpperCase() || "CS"
+            )}
           </div>
           <div className="overflow-hidden flex-1">
             <p className="font-bold text-slate-200 truncate text-[11px]">

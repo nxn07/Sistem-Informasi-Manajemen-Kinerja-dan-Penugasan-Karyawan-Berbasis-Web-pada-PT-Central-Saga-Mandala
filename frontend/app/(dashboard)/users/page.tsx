@@ -6,6 +6,7 @@ import { User } from "@/types/api";
 import { Toast } from "@/components/ui/Toast";
 import Cookies from "js-cookie";
 import { useAuth } from "@/hooks/useAuth";
+import { auditLogService } from "@/services/audit-log-service";
 import {
   Search,
   Shield,
@@ -185,6 +186,12 @@ export default function UsersPage() {
       );
 
       setSelectedUserForRbac(null);
+      auditLogService.logActivity(
+        user?.name,
+        "RBAC_ROLE_UPDATED",
+        "App\\Models\\User",
+        `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) memperbarui role RBAC '${selectedUserForRbac.name}' menjadi '${editedRole}'`
+      );
       setToast({
         type: "success",
         message: `Hak Akses & Role (${editedRole}) Berhasil Diperbarui untuk ${selectedUserForRbac.name}! (Izin: ${editedPermissions.length > 0 ? editedPermissions.join(", ") : "Tanpa Izin Khusus"})`,
@@ -214,6 +221,12 @@ export default function UsersPage() {
       setIsCreateOpen(false);
       setNewName("");
       setNewEmail("");
+      auditLogService.logActivity(
+        user?.name,
+        "USER_CREATED",
+        "App\\Models\\User",
+        `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) menambahkan pengguna baru '${newName}' (${newRole})`
+      );
       setToast({
         type: "success",
         message: `User baru '${newName}' (${newRole}) berhasil didaftarkan!`,
@@ -231,6 +244,12 @@ export default function UsersPage() {
       try {
         await userService.delete(id);
         setUsers((prev) => prev.filter((u) => u.id !== id));
+        auditLogService.logActivity(
+          user?.name,
+          "USER_DELETED",
+          "App\\Models\\User",
+          `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) menghapus pengguna '${name}'`
+        );
         setToast({
           type: "success",
           message: `Pengguna/Karyawan '${name}' berhasil dihapus dari sistem!`,

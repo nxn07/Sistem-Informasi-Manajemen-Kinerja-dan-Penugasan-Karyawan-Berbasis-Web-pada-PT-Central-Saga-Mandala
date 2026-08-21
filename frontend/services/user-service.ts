@@ -14,10 +14,12 @@ function getLocalUsers(): User[] {
       const userRole = (u.role || u.roles?.[0] || "EMPLOYEE").toUpperCase();
       const savedByEmail = cleanEmail ? localStorage.getItem(`simkap_user_perm_${cleanEmail}`) : null;
 
+      let hasSavedPerms = false;
       let perms = u.permissions;
-      if (savedByEmail) {
+      if (savedByEmail !== null) {
         try {
           perms = JSON.parse(savedByEmail);
+          hasSavedPerms = true;
         } catch {
           // ignore
         }
@@ -33,7 +35,7 @@ function getLocalUsers(): User[] {
         ...u,
         role: userRole,
         roles: [userRole],
-        permissions: perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"]),
+        permissions: hasSavedPerms ? (perms || []) : (perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"])),
       };
     });
   } catch {
@@ -99,12 +101,14 @@ function mergeUsers(serverUsers: User[], localUsers: User[]): User[] {
     const fixedId = fixedIdMap[cleanEmail] || user.id;
     const userRole = (user.role || user.roles?.[0] || "EMPLOYEE").toUpperCase();
 
+    let hasSavedPerms = false;
     let perms = user.permissions;
     if (typeof window !== "undefined" && cleanEmail) {
       const savedByEmail = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
-      if (savedByEmail) {
+      if (savedByEmail !== null) {
         try {
           perms = JSON.parse(savedByEmail);
+          hasSavedPerms = true;
         } catch {
           // ignore
         }
@@ -122,7 +126,7 @@ function mergeUsers(serverUsers: User[], localUsers: User[]): User[] {
       id: fixedId,
       role: userRole,
       roles: [userRole],
-      permissions: perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.review"] : ["tasks.submit"]),
+      permissions: hasSavedPerms ? (perms || []) : (perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"])),
     };
   });
 }

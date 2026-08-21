@@ -38,21 +38,21 @@
 
 ### A. Role Management (Atasan & Pengelola)
 
-| No | Peran (Role) | Email Login | Password | Nama Pengguna | Akses Menu & Fungsi |
-|:--:|:---|:---|:---|:---|:---|
-| 1 | 👑 **ADMIN** | `admin@gmail.com` | `password` | Admin System | **8 Menu Complete**: Full Super Admin, Kelola User, RBAC, Divisi, KPI, Audit Log |
-| 2 | 👔 **MANAGER 1** | `manager@gmail.com` | `password` | Manager Utama | **3 Menu Operasional**: Assign Tugas Baru, Review & Disetujui/Revisi, Evaluasi KPI |
-| 3 | 👔 **MANAGER 2** | `manager2@gmail.com` | `password` | Manager Operasional | **3 Menu Operasional**: Assign Tugas Baru, Review & Disetujui/Revisi, Evaluasi KPI |
+| No | Peran (Role) | Email Login | Password | Nama Pengguna | Izin Akses Spesifik (Permissions Modal RBAC) | Akses Fitur Utama |
+|:--:|:---|:---|:---|:---|:---|:---|
+| 1 | 👑 **ADMIN** | `admin@gmail.com` | `password` | Admin System | `tasks.create`, `tasks.submit`, `tasks.review`, `users.manage`, `users.delete`, `evaluations.create`, `divisions.manage` (Full `*`) | **Full Super Admin**: Kelola User, Edit RBAC, Master Divisi, KPI Criteria, Audit Log |
+| 2 | 👔 **MANAGER 1** | `manager@gmail.com` | `password` | Manager Utama | `tasks.create`, `tasks.submit`, `tasks.review`, `evaluations.create (Opsional)`, `users.delete (Opsional)` | **5 Opsi Manager**: Assign Tugas Baru, Submit Bukti, Review & Persetujuan, Evaluasi KPI, Hapus User |
+| 3 | 👔 **MANAGER 2** | `manager2@gmail.com` | `password` | Manager Operasional | `tasks.create`, `tasks.submit`, `tasks.review`, `evaluations.create (Opsional)`, `users.delete (Opsional)` | **5 Opsi Manager**: Assign Tugas Baru, Submit Bukti, Review & Persetujuan, Evaluasi KPI, Hapus User |
 
 ### B. Role Employee (Staf Operasional / Karyawan)
 
-| No | Peran (Role) | Email Login | Password | Nama Pengguna | Jabatan Pegawai | Akses Fitur Utama |
-|:--:|:---|:---|:---|:---|:---|:---|
-| 1 | 👤 **EMPLOYEE 1** | `sarah@gmail.com` | `password` | Sarah Jenkins | Finance Specialist | Mulai Kerja, Submit Bukti, Buat Tugas Baru, Filter Tugas Saya |
-| 2 | 👤 **EMPLOYEE 2** | `michael@gmail.com` | `password` | Michael Ross | IT Operations | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
-| 3 | 👤 **EMPLOYEE 3** | `natalie@gmail.com` | `password` | Natalie McDermott | HR Specialist | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
-| 4 | 👤 **EMPLOYEE 4** | `van@gmail.com` | `password` | Van Larkin | Legal Counsel | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
-| 5 | 👤 **EMPLOYEE 5** | `felicity@gmail.com` | `password` | Miss Felicity Runte | Staff Specialist | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
+| No | Peran (Role) | Email Login | Password | Nama Pengguna | Jabatan Pegawai | Izin Akses Spesifik (Permissions Modal RBAC) | Akses Fitur Utama |
+|:--:|:---|:---|:---|:---|:---|:---|:---|
+| 1 | 👤 **EMPLOYEE 1** | `sarah@gmail.com` | `password` | Sarah Jenkins | Finance Specialist | `tasks.create`, `tasks.submit`, `tasks.review` | Mulai Kerja, Submit Bukti, Buat Tugas Baru, Filter Tugas Saya |
+| 2 | 👤 **EMPLOYEE 2** | `michael@gmail.com` | `password` | Michael Ross | IT Operations | `tasks.create`, `tasks.submit`, `tasks.review` | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
+| 3 | 👤 **EMPLOYEE 3** | `natalie@gmail.com` | `password` | Natalie McDermott | HR Specialist | `tasks.create`, `tasks.submit`, `tasks.review` | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
+| 4 | 👤 **EMPLOYEE 4** | `van@gmail.com` | `password` | Van Larkin | Legal Counsel | `tasks.create`, `tasks.submit`, `tasks.review` | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
+| 5 | 👤 **EMPLOYEE 5** | `felicity@gmail.com` | `password` | Miss Felicity Runte | Staff Specialist | `tasks.create`, `tasks.submit`, `tasks.review` | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
 
 > [!IMPORTANT]
 > **Akun Baru**: Pengguna baru yang didaftarkan melalui menu `/users` dapat langsung diloginkan menggunakan email baru tersebut dan password default: **`password`**.
@@ -61,35 +61,45 @@
 
 ## 🛡️ 4. Matriks Hak Akses Spatie RBAC
 
-Tabel di bawah ini menjelaskan hak akses bawaan dan izin khusus (*Custom Permission*) yang dapat diatur via menu `/users`:
+Tabel di bawah ini menjelaskan hak akses bawaan dan izin khusus (*Custom Permission*) yang dapat diatur via modal Edit Hak Akses di menu `/users`:
 
 | Kunci Permission | Fitur yang Diizinkan | EMPLOYEE | MANAGER | ADMIN |
 |:---|:---|:--:|:--:|:--:|
-| **`tasks.create`** | Membuat & assign tugas baru (`+ Assign New Task`) | ⚪ *(Izin Khusus)* | 🟢 Ya | 🟢 Ya |
-| **`tasks.submit`** | Unggah berkas / link bukti penyelesaian tugas | 🟢 Ya | 🟢 Ya | 🟢 Ya |
-| **`tasks.review`** | Meninjau, menyetujui, atau meminta revisi tugas | ⚪ *(Izin Khusus)* | 🟢 Ya | 🟢 Ya |
-| **`evaluations.create`** | Mengisi slider KPI & menerbitkan evaluasi bulanan | ❌ Tidak | 🟢 Ya | 🟢 Ya |
-| **`evaluations.view_own`** | Melihat kartu skor evaluasi mandiri (*Private Mode*) | 🟢 Ya | 🟢 Ya | 🟢 Ya |
-| **`users.manage`** | Buka menu & edit modal Spatie RBAC `/users` | ❌ Tidak | ❌ Tidak | 🟢 Ya |
-| **`users.delete`** | Menghapus data akun karyawan / pengguna dari sistem | ❌ Tidak | ⚪ *(Izin Khusus)* | 🟢 Ya |
-| **`divisions.manage`** | Mengelola master data divisi & departemen | ❌ Tidak | ❌ Tidak | 🟢 Ya |
-| **`kpis.manage`** | Mengatur kriteria & bobot persentase KPI (100%) | ❌ Tidak | ❌ Tidak | 🟢 Ya |
-| **`logs.view`** | Melihat riwayat audit log aktivitas sistem | ❌ Tidak | ❌ Tidak | 🟢 Ya |
+| **`tasks.create`** | Membuat & assign tugas baru (`+ Assign New Task`) | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Dicentang Bawaan) | 🟢 Ya (Super Admin) |
+| **`tasks.submit`** | Unggah berkas / link bukti penyelesaian tugas | 🟢 Ya (Bawaan Utama) | 🟢 Ya (Dicentang Bawaan) | 🟢 Ya (Super Admin) |
+| **`tasks.review`** | Meninjau, menyetujui, atau meminta revisi tugas | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Dicentang Bawaan) | 🟢 Ya (Super Admin) |
+| **`evaluations.create`** | Mengisi slider KPI & menerbitkan evaluasi bulanan | ❌ Tidak Tersedia *(Dihapus)* | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Super Admin) |
+| **`evaluations.view_own`** | Melihat kartu skor evaluasi mandiri (*Private Mode*) | 🟢 Ya (Bawaan Utama) | 🟢 Ya (Bawaan Utama) | 🟢 Ya (Super Admin) |
+| **`users.manage`** | Buka menu & edit modal Spatie RBAC `/users` | ❌ Tidak Tersedia *(Dihapus)* | ❌ Tidak Tersedia *(Dihapus)* | 🟢 Ya (Super Admin) |
+| **`users.delete`** | Menghapus data akun karyawan / pengguna dari sistem | ❌ Tidak Tersedia *(Dihapus)* | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Super Admin) |
+| **`divisions.manage`** | Mengelola master data divisi & departemen | ❌ Tidak Tersedia *(Dihapus)* | ❌ Tidak Tersedia *(Dihapus)* | 🟢 Ya (Super Admin) |
+| **`kpis.manage`** | Mengatur kriteria & bobot persentase KPI (100%) | ❌ Tidak Tersedia *(Dihapus)* | ❌ Tidak Tersedia *(Dihapus)* | 🟢 Ya (Super Admin) |
+| **`logs.view`** | Melihat riwayat audit log aktivitas sistem | ❌ Tidak Tersedia *(Dihapus)* | ❌ Tidak Tersedia *(Dihapus)* | 🟢 Ya (Super Admin) |
 
 ---
 
 ## 🔑 5. Penjelasan Lengkap Checkbox "Izin Akses Spesifik (Permissions)" (Lihat Modal Edit RBAC)
 
-Sistem **Central Saga** menerapkan pembagian opsi centang izin akses yang disesuaikan secara presisi berdasarkan **Role Utama** di modal Edit Hak Akses:
+Sistem **Central Saga** menerapkan pembagian opsi centang izin akses yang disesuaikan secara presisi berdasarkan **Role Utama** pada modal Edit Hak Akses:
 
-### A. Opsi Checkbox Khusus Role EMPLOYEE (Staf Operasional)
-Bagi akun ber-role **EMPLOYEE**, opsi hak akses khusus manajemen (`users.manage`, `users.delete`, `evaluations.create`, `divisions.manage`) **SECARA OTOMATIS DIHAPUS DARI TAMPILAN CHECKLIST MODAL** untuk mencegah tumpang tindih kewenangan:
-1. 📝 **`tasks.create (Buat Tugas)`**: Memberikan hak bagi pegawai untuk membuat & mendelegasikan tugas baru (`+ Assign New Task`).
+### A. Opsi Checkbox Khusus Role EMPLOYEE (Staf Operasional - 3 Opsi)
+Bagi akun ber-role **EMPLOYEE**, opsi hak akses khusus manajemen (`users.manage`, `users.delete`, `evaluations.create`, `divisions.manage`) **DIHAPUS DARI CHECKLIST MODAL** untuk menjaga kejelasan peran:
+1. 📝 **`tasks.create (Buat Tugas)`**: Memberikan hak bagi pegawai untuk membuat & assign tugas baru (`+ Assign New Task`).
 2. 📤 **`tasks.submit (Submit Bukti)`**: Memberikan hak mengumpulkan dokumen / link bukti pekerjaan (`[ Kumpulkan Bukti ]`).
 3. 🔍 **`tasks.review (Review Atasan)`**: Memberikan hak peninjau (*Reviewer*) untuk menyetujui / meminta revisi tugas (`[ 👁️ Review & Berkas ]`).
 
-### B. Opsi Checkbox Khusus Role MANAGER & ADMIN
-Bagi akun ber-role **MANAGER** dan **ADMIN**, opsi tambahan manajemen tingkat tinggi seperti `users.manage` (Kelola User), `users.delete` (Hapus Karyawan), `evaluations.create` (Evaluasi KPI), dan `divisions.manage` (Master Divisi) tersedia lengkap untuk dikelola oleh Super Admin.
+### B. Opsi Checkbox Khusus Role MANAGER (Atasan Operasional - 5 Opsi)
+Bagi akun ber-role **MANAGER**, modal menampilkan 5 opsi khusus:
+1. 📝 **`tasks.create (Buat Tugas)`**: Aktif secara bawaan.
+2. 📤 **`tasks.submit (Submit Bukti)`**: Aktif secara bawaan.
+3. 🔍 **`tasks.review (Review Atasan)`**: Aktif secara bawaan.
+4. 📊 **`evaluations.create (Evaluasi)`**: Dapat dicentang oleh Admin untuk memberikan hak pembuatan evaluasi KPI.
+5. 🗑️ **`users.delete (Hapus Karyawan)`**: Dapat dicentang oleh Admin untuk mengaktifkan tombol tempat sampah (`Trash2`) & menu `/users`.
+
+### C. Opsi Checkbox Khusus Role ADMIN & Proteksi Keamanan (Admin Locked)
+1. Bagi akun ber-role **ADMIN**, seluruh 7 opsi checklist manajemen tersedia lengkap (`tasks.create`, `tasks.submit`, `tasks.review`, `users.manage`, `users.delete`, `evaluations.create`, `divisions.manage`).
+2. 🔒 **Proteksi Keamanan Role Admin**: Pada tabel `/users`, akun Super Admin (`Admin System`) secara otomatis diproteksi dengan badge **`🔒 Admin Terkunci`**. Tombol Edit Hak Akses & Hapus User disembunyikan untuk mencegah perubahan hak akses Super Admin secara tidak sengaja.
+3. Pada modal Edit Hak Akses, pilihan role pill disajikan untuk `MANAGER` dan `EMPLOYEE` guna menjaga integritas struktur RBAC.
 
 ---
 

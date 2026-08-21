@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { auditLogService } from "@/services/audit-log-service";
 import { Toast } from "@/components/ui/Toast";
 import { divisionService } from "@/services/division-service";
 import { Division } from "@/types/api";
@@ -15,6 +17,7 @@ interface MemberItem {
 }
 
 export default function DivisionsPage() {
+  const { user } = useAuth();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -90,6 +93,12 @@ export default function DivisionsPage() {
       setNewCode("");
       setNewName("");
       setNewDescription("");
+      auditLogService.logActivity(
+        user?.name,
+        "DIVISION_CREATED",
+        "App\\Models\\Division",
+        `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) membuat divisi baru '${newName}' (${newCode.toUpperCase()})`
+      );
       setToast({
         type: "success",
         message: `Divisi baru '${newCode}' (${newName}) berhasil ditambahkan!`,
@@ -107,6 +116,12 @@ export default function DivisionsPage() {
       try {
         await divisionService.delete(id);
         setDivisions((prev) => prev.filter((d) => d.id !== id));
+        auditLogService.logActivity(
+          user?.name,
+          "DIVISION_DELETED",
+          "App\\Models\\Division",
+          `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) menghapus divisi '${name}'`
+        );
         setToast({
           type: "success",
           message: `Divisi '${name}' berhasil dihapus!`,
@@ -163,45 +178,61 @@ export default function DivisionsPage() {
         </div>
       </div>
 
-      {/* Divisions Grid (Crisp 1px Border & Soft Floating Shadow) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* Divisions Grid (ULTRA-AESTHETIC EXECUTIVE CARDS - 100% MATCH WITH KPI CARDS) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filtered.map((item) => (
           <div
             key={item.id}
-            className="p-5 bg-white border border-slate-300 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-500 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+            className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-blue-500/80 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden"
           >
+            {/* Ambient Background Sheen */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all pointer-events-none" />
+
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-1 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-300 rounded-lg shadow-2xs">
+              {/* Header Row: Code Badge & Quick Action Buttons */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="px-3.5 py-1 text-xs font-black rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-teal-600 text-white shadow-xs tracking-wider uppercase">
                   {item.code}
                 </span>
-                <span className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                  <Users className="w-3.5 h-3.5 text-slate-400" />
-                  Divisi Terdaftar
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleDeleteDivision(item.id, item.name)}
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all border border-slate-200 hover:border-rose-300 cursor-pointer active:scale-95 shadow-2xs"
+                    title="Hapus Divisi"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <h3 className="text-base font-extrabold text-slate-900 mb-1 flex items-center gap-2 group-hover:text-blue-600 transition-colors">
-                <Building2 className="w-4 h-4 text-blue-600" />
-                <span>{item.name}</span>
-              </h3>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">
-                {item.description || "Unit kerja departemen Central Saga."}
-              </p>
+
+              {/* Title & Icon Section */}
+              <div className="flex items-start gap-3.5 mb-2">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-900 to-indigo-800 text-white flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight group-hover:text-blue-700 transition-colors line-clamp-1">
+                    {item.name}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1 line-clamp-2">
+                    {item.description || "Unit kerja departemen Central Saga."}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+            {/* Footer Info & Action Button (Matching KPI Card Footer!) */}
+            <div className="pt-3.5 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-extrabold bg-blue-50 text-blue-800 border border-blue-200 shadow-2xs">
+                <Users className="w-3.5 h-3.5 text-blue-600" />
+                Divisi Resmi Terdaftar
+              </span>
               <button
                 onClick={() => setSelectedDivisionForDetail(item)}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs flex-1 text-center border border-slate-300"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-blue-600 active:scale-95 text-white rounded-xl text-xs font-extrabold transition-all duration-200 shadow-xs cursor-pointer"
               >
-                Lihat Detail Anggota
-              </button>
-              <button
-                onClick={() => handleDeleteDivision(item.id, item.name)}
-                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-300"
-                title="Hapus Divisi"
-              >
-                <Trash2 className="w-4 h-4" />
+                <span>Lihat Detail Anggota</span>
+                <Users className="w-3.5 h-3.5 text-blue-300" />
               </button>
             </div>
           </div>
