@@ -5,6 +5,7 @@ import { userService } from "@/services/user-service";
 import { User } from "@/types/api";
 import { Toast } from "@/components/ui/Toast";
 import Cookies from "js-cookie";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Search,
   Shield,
@@ -14,9 +15,39 @@ import {
   UserPlus,
   Key,
   Users,
+  Trash2,
 } from "lucide-react";
 
+const PERMISSIONS_BY_ROLE: Record<string, { key: string; label: string }[]> = {
+  EMPLOYEE: [
+    { key: "tasks.create", label: "tasks.create (Buat Tugas)" },
+    { key: "tasks.submit", label: "tasks.submit (Submit Bukti)" },
+    { key: "tasks.review", label: "tasks.review (Review Atasan)" },
+  ],
+  MANAGER: [
+    { key: "tasks.create", label: "tasks.create (Buat Tugas)" },
+    { key: "tasks.submit", label: "tasks.submit (Submit Bukti)" },
+    { key: "tasks.review", label: "tasks.review (Review Atasan)" },
+    { key: "evaluations.create", label: "evaluations.create (Evaluasi)" },
+    { key: "users.delete", label: "users.delete (Hapus Karyawan)" },
+  ],
+  ADMIN: [
+    { key: "tasks.create", label: "tasks.create (Buat Tugas)" },
+    { key: "tasks.submit", label: "tasks.submit (Submit Bukti)" },
+    { key: "tasks.review", label: "tasks.review (Review Atasan)" },
+    { key: "users.manage", label: "users.manage (Kelola User)" },
+    { key: "users.delete", label: "users.delete (Hapus Karyawan)" },
+    { key: "evaluations.create", label: "evaluations.create (Evaluasi)" },
+    { key: "divisions.manage", label: "divisions.manage (Divisi)" },
+  ],
+};
+
 export default function UsersPage() {
+  const { user } = useAuth();
+  const rawRole = (user?.role || user?.roles?.[0] || "ADMIN").toUpperCase();
+  const isAdmin = rawRole === "ADMIN";
+  const userPerms = user?.permissions || [];
+  const canDeleteUser = isAdmin || userPerms.includes("users.delete") || userPerms.includes("*");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -61,8 +92,47 @@ export default function UsersPage() {
 
   const openRbacModal = (userItem: User) => {
     setSelectedUserForRbac(userItem);
-    setEditedRole(userItem.role || userItem.roles?.[0] || "EMPLOYEE");
-    setEditedPermissions(userItem.permissions || ["tasks.submit"]);
+    const userRole = (userItem.role || userItem.roles?.[0] || "EMPLOYEE").toUpperCase();
+    setEditedRole(userRole);
+    const cleanEmail = userItem.email.toLowerCase().trim();
+    
+    let currentPerms = userItem.permissions;
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
+        if (raw) currentPerms = JSON.parse(raw);
+      } catch {
+        // ignore
+      }
+    }
+
+    // Filter permissions for EMPLOYEE & MANAGER roles
+    if (userRole === "EMPLOYEE" && currentPerms) {
+      currentPerms = currentPerms.filter((p) => ["tasks.create", "tasks.submit", "tasks.review"].includes(p));
+    } else if (userRole === "MANAGER" && currentPerms) {
+      currentPerms = currentPerms.filter((p) => ["tasks.create", "tasks.submit", "tasks.review", "evaluations.create", "users.delete"].includes(p));
+    }
+
+    setEditedPermissions(
+      currentPerms && currentPerms.length > 0
+        ? currentPerms
+        : userRole === "ADMIN"
+        ? ["*"]
+        : userRole === "MANAGER"
+        ? ["tasks.create", "tasks.submit", "tasks.review"]
+        : ["tasks.submit"]
+    );
+  };
+
+  const handleRolePillClick = (role: string) => {
+    setEditedRole(role);
+    if (role === "EMPLOYEE") {
+      setEditedPermissions(["tasks.submit"]);
+    } else if (role === "MANAGER") {
+      setEditedPermissions(["tasks.create", "tasks.submit", "tasks.review"]);
+    } else if (role === "ADMIN") {
+      setEditedPermissions(["*"]);
+    }
   };
 
   const handleTogglePermission = (permissionKey: string) => {
@@ -76,6 +146,8 @@ export default function UsersPage() {
   const handleSaveRbac = async () => {
     if (!selectedUserForRbac) return;
 
+    const cleanEmail = selectedUserForRbac.email.toLowerCase().trim();
+
     try {
       const updatedUser = await userService.update(selectedUserForRbac.id, {
         role: editedRole,
@@ -83,14 +155,21 @@ export default function UsersPage() {
         permissions: editedPermissions,
       });
 
-      // Update current logged in user cookie if editing logged-in user
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`simkap_user_perm_${cleanEmail}`, JSON.stringify(editedPermissions));
+      }
+
+      // Update current logged in user cookie & localStorage if editing logged-in user
       const currentUserCookie = Cookies.get("simkap_user");
       if (currentUserCookie) {
         try {
           const parsed = JSON.parse(currentUserCookie);
-          if (parsed.email === selectedUserForRbac.email || parsed.id === selectedUserForRbac.id) {
+          if (parsed.email?.toLowerCase().trim() === cleanEmail) {
             const merged = { ...parsed, role: editedRole, roles: [editedRole], permissions: editedPermissions };
             Cookies.set("simkap_user", JSON.stringify(merged), { expires: 7 });
+            if (typeof window !== "undefined") {
+              localStorage.setItem("simkap_user", JSON.stringify(merged));
+            }
           }
         } catch {
           // ignore
@@ -99,7 +178,7 @@ export default function UsersPage() {
 
       setUsers((prev) =>
         prev.map((u) =>
-          u.id === selectedUserForRbac.id
+          u.email.toLowerCase().trim() === cleanEmail
             ? { ...u, role: editedRole, roles: [editedRole], permissions: editedPermissions }
             : u
         )
@@ -108,7 +187,7 @@ export default function UsersPage() {
       setSelectedUserForRbac(null);
       setToast({
         type: "success",
-        message: `Hak Akses & Role (${editedRole}) Berhasil Diperbarui untuk ${selectedUserForRbac.name}! (Izin: ${editedPermissions.join(", ")})`,
+        message: `Hak Akses & Role (${editedRole}) Berhasil Diperbarui untuk ${selectedUserForRbac.name}! (Izin: ${editedPermissions.length > 0 ? editedPermissions.join(", ") : "Tanpa Izin Khusus"})`,
       });
     } catch {
       setToast({
@@ -144,6 +223,26 @@ export default function UsersPage() {
         type: "error",
         message: "Gagal mendaftarkan user baru.",
       });
+    }
+  };
+
+  const handleDeleteUser = async (id: number, name: string) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus pengguna '${name}' dari sistem?`)) {
+      try {
+        await userService.delete(id);
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+        setToast({
+          type: "success",
+          message: `Pengguna/Karyawan '${name}' berhasil dihapus dari sistem!`,
+        });
+      } catch (error: any) {
+        console.error("Gagal menghapus pengguna dari sistem:", error);
+        const errMsg = error?.response?.data?.message || "Gagal menghapus pengguna dari sistem. Silakan coba lagi.";
+        setToast({
+          type: "error",
+          message: errMsg,
+        });
+      }
     }
   };
 
@@ -275,13 +374,24 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <button
-                        onClick={() => openRbacModal(u)}
-                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold text-xs rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs border border-blue-200/90"
-                      >
-                        <Shield className="w-3.5 h-3.5" />
-                        <span>Edit Hak Akses</span>
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openRbacModal(u)}
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold text-xs rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs border border-blue-200/90"
+                        >
+                          <Shield className="w-3.5 h-3.5" />
+                          <span>Edit Hak Akses</span>
+                        </button>
+                        {canDeleteUser && (
+                          <button
+                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-slate-200 hover:border-rose-300"
+                            title="Hapus Pengguna / Karyawan"
+                          >
+                            <Trash2 className="w-4 h-4 text-rose-600" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -325,7 +435,7 @@ export default function UsersPage() {
                     <button
                       key={r}
                       type="button"
-                      onClick={() => setEditedRole(r)}
+                      onClick={() => handleRolePillClick(r)}
                       className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
                         editedRole === r
                           ? "bg-blue-900 text-white border-blue-900 shadow-xs"
@@ -344,14 +454,7 @@ export default function UsersPage() {
                   Izin Akses Spesifik (Permissions):
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { key: "tasks.create", label: "tasks.create (Buat Tugas)" },
-                    { key: "tasks.submit", label: "tasks.submit (Submit Bukti)" },
-                    { key: "tasks.review", label: "tasks.review (Review Atasan)" },
-                    { key: "users.manage", label: "users.manage (Kelola User)" },
-                    { key: "evaluations.create", label: "evaluations.create (Evaluasi)" },
-                    { key: "divisions.manage", label: "divisions.manage (Divisi)" },
-                  ].map((perm) => {
+                  {(PERMISSIONS_BY_ROLE[editedRole] || PERMISSIONS_BY_ROLE.EMPLOYEE).map((perm) => {
                     const isChecked = editedPermissions.includes(perm.key);
                     return (
                       <button

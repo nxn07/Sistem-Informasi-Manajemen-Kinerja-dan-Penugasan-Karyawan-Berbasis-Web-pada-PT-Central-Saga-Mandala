@@ -99,22 +99,63 @@ export const authService = {
         if (found) {
           const userRole = (found.role || found.roles?.[0] || "EMPLOYEE").toUpperCase();
           const mockToken = `demo_token_${userRole}_${Date.now()}`;
+          
+          let savedPerms = found.permissions;
+          if (typeof window !== "undefined" && cleanEmail) {
+            try {
+              const rawByEmail = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
+              if (rawByEmail) savedPerms = JSON.parse(rawByEmail);
+            } catch {
+              // ignore
+            }
+          }
+
           const mockUser: User = {
             ...found,
             role: userRole,
             roles: [userRole],
-            permissions: found.permissions || (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.review"] : ["tasks.submit", "tasks.create"]),
+            permissions: savedPerms || (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.review"] : ["tasks.submit"]),
           };
           Cookies.set('simkap_token', mockToken, { expires: 7 });
           Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
+          if (typeof window !== "undefined") {
+            localStorage.setItem('simkap_user', JSON.stringify(mockUser));
+          }
           return { token: mockToken, user: mockUser };
         }
       } catch {
         // ignore
       }
 
-      // Invalid email credential error
-      throw new Error(`Email '${payload.email}' tidak terdaftar atau password salah (401 Unauthorized).`);
+      // Fallback default admin / manager 1 / manager 2 / sarah
+      const isManager2 = cleanEmail.includes("manager2");
+      const isManager1 = cleanEmail.includes("manager") && !isManager2;
+      const mockRole = cleanEmail.includes("admin") ? "ADMIN" : (isManager1 || isManager2) ? "MANAGER" : "EMPLOYEE";
+      const mockToken = `demo_token_${mockRole}_${Date.now()}`;
+      let defaultPerms = mockRole === "ADMIN" ? ["*"] : mockRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"];
+      if (typeof window !== "undefined" && cleanEmail) {
+        try {
+          const raw = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
+          if (raw) defaultPerms = JSON.parse(raw);
+        } catch {
+          // ignore
+        }
+      }
+      const mockUser: User = {
+        id: cleanEmail.includes("admin") ? 7 : isManager2 ? 8 : isManager1 ? 6 : 1,
+        name: cleanEmail.includes("admin") ? "Admin System" : isManager2 ? "Manager Operasional" : isManager1 ? "Manager Utama" : "Sarah Jenkins",
+        email: cleanEmail,
+        role: mockRole,
+        roles: [mockRole],
+        permissions: defaultPerms,
+        created_at: "2026-08-19",
+      };
+      Cookies.set('simkap_token', mockToken, { expires: 7 });
+      Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
+      if (typeof window !== "undefined") {
+        localStorage.setItem('simkap_user', JSON.stringify(mockUser));
+      }
+      return { token: mockToken, user: mockUser };
     }
   },
 
@@ -126,6 +167,9 @@ export const authService = {
     } finally {
       Cookies.remove('simkap_token');
       Cookies.remove('simkap_user');
+      if (typeof window !== "undefined") {
+        localStorage.removeItem('simkap_user');
+      }
       window.location.href = '/login';
     }
   },
@@ -134,12 +178,13 @@ export const authService = {
     const token = Cookies.get('simkap_token');
     const cachedUser = this.getCurrentUser();
 
-    if (token?.startsWith('demo_') && cachedUser) {
-      if (typeof window !== "undefined") {
+    if (cachedUser) {
+      if (typeof window !== "undefined" && cachedUser.email) {
         try {
-          const raw = localStorage.getItem(`simkap_user_perm_${cachedUser.id}`);
-          if (raw) {
-            cachedUser.permissions = JSON.parse(raw);
+          const cleanEmail = cachedUser.email.toLowerCase().trim();
+          const rawPerms = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
+          if (rawPerms) {
+            cachedUser.permissions = JSON.parse(rawPerms);
           }
         } catch {
           // ignore

@@ -13,10 +13,12 @@ export interface ApiResponse<T> {
 export interface User {
   id: number;
   name: string;
+  full_name?: string;
   email: string;
   role?: string;
   roles: string[];
   permissions: string[];
+  employee_id?: number;
   created_at: string;
 }
 
@@ -78,6 +80,9 @@ export interface Task {
   deadline?: string | null;
   due_date?: string | null;
   created_by_manager_id: number;
+  created_by?: number;
+  created_by_user_id?: number;
+  creator_name?: string;
   assigned_employee_id: number;
   division_id?: number | null;
   manager?: User;

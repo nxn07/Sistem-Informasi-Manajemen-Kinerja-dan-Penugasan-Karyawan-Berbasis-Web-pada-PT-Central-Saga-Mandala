@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { SubmitTaskModal } from "@/components/tasks/SubmitTaskModal";
@@ -26,6 +26,7 @@ import {
   RotateCcw,
   UserCheck,
   Eye,
+  Edit3,
   Sparkles,
 } from "lucide-react";
 import { Task } from "@/types/api";
@@ -83,9 +84,26 @@ export default function TasksPage() {
   const [submitTaskTarget, setSubmitTaskTarget] = useState<{
     id: number;
     title: string;
+    taskData?: Task | null;
   } | null>(null);
   const [reviewTaskTarget, setReviewTaskTarget] = useState<Task | null>(null);
   const [selectedDetailTask, setSelectedDetailTask] = useState<Task | null>(null);
+
+  // Listen for custom edit document events from detail modal
+  useEffect(() => {
+    const handleEditDocumentEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<Task>;
+      if (customEvent.detail) {
+        setSubmitTaskTarget({
+          id: customEvent.detail.id,
+          title: customEvent.detail.title,
+          taskData: customEvent.detail,
+        });
+      }
+    };
+    window.addEventListener("edit-task-document", handleEditDocumentEvent);
+    return () => window.removeEventListener("edit-task-document", handleEditDocumentEvent);
+  }, []);
 
   // Calculate Metrics from tasks array
   const metrics = useMemo(() => {
@@ -102,13 +120,24 @@ export default function TasksPage() {
   // Computed Filtered Tasks
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
-      const empName = task.employee?.full_name || task.employee?.name || "";
-      const loggedUserName = user?.name || "Sarah Jenkins";
+      const empName = (task.employee?.full_name || task.employee?.name || "").toLowerCase().trim();
+      const loggedUserName = (user?.full_name || user?.name || "Sarah Jenkins").toLowerCase().trim();
       
-      const isAssignedToMe =
-        empName.toLowerCase().includes(loggedUserName.toLowerCase()) ||
-        loggedUserName.toLowerCase().includes(empName.toLowerCase());
+      // Strict Name Matching: Task is assigned to logged-in employee (Sarah Jenkins)
+      const isAssignedToMe = Boolean(
+        empName &&
+        loggedUserName &&
+        (empName.includes(loggedUserName) || loggedUserName.includes(empName))
+      );
 
+      // Strict Name Matching: Task was created by logged-in employee (Sarah Jenkins)
+      const isCreatedByMe = Boolean(
+        task.creator_name &&
+        loggedUserName &&
+        task.creator_name.toLowerCase().trim().includes(loggedUserName)
+      );
+
+      // MY_TASKS strictly shows tasks assigned to the logged-in employee ONLY
       const matchesEmployeeFilter =
         !isEmployee ||
         employeeFilter === "ALL_TASKS" ||
@@ -644,12 +673,29 @@ export default function TasksPage() {
                                           setSubmitTaskTarget({
                                             id: task.id,
                                             title: task.title,
+                                            taskData: task,
                                           })
                                         }
                                         className="px-2.5 py-1 bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-800 text-[11px] font-black rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs border border-purple-200/90"
                                       >
-                                        <UploadCloud className="w-3.5 h-3.5" />
-                                        <span>Kumpulkan</span>
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                        <span>Edit / Kumpulkan</span>
+                                      </button>
+                                    )}
+                                    {task.status === "SUBMITTED" && (
+                                      <button
+                                        onClick={() =>
+                                          setSubmitTaskTarget({
+                                            id: task.id,
+                                            title: task.title,
+                                            taskData: task,
+                                          })
+                                        }
+                                        className="px-2.5 py-1 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-900 text-[11px] font-black rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs border border-blue-200/90"
+                                        title="Perbarui dokumen yang sudah diunggah"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                        <span>Edit Dokumen</span>
                                       </button>
                                     )}
                                     {(task.status === "REVISION" || task.status === "REJECTED") && (
@@ -658,12 +704,13 @@ export default function TasksPage() {
                                           setSubmitTaskTarget({
                                             id: task.id,
                                             title: task.title,
+                                            taskData: task,
                                           })
                                         }
                                         className="px-2.5 py-1 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-900 text-[11px] font-black rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs border border-amber-200/90"
                                       >
                                         <RotateCcw className="w-3.5 h-3.5" />
-                                        <span>Perbaiki & Ajukan</span>
+                                        <span>Perbarui & Ajukan</span>
                                       </button>
                                     )}
                                   </>
@@ -939,6 +986,7 @@ export default function TasksPage() {
         onClose={() => setSubmitTaskTarget(null)}
         taskId={submitTaskTarget?.id ?? null}
         taskTitle={submitTaskTarget?.title}
+        taskData={submitTaskTarget?.taskData}
         onSubmit={handleSubmitTaskAction}
       />
 
@@ -956,6 +1004,13 @@ export default function TasksPage() {
         isOpen={!!selectedDetailTask}
         onClose={() => setSelectedDetailTask(null)}
         task={selectedDetailTask}
+        onEditDocument={(t) =>
+          setSubmitTaskTarget({
+            id: t.id,
+            title: t.title,
+            taskData: t,
+          })
+        }
       />
     </div>
   );

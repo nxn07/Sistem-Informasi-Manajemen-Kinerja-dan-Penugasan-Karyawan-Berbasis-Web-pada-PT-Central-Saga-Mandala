@@ -15,7 +15,45 @@ function getLocalTasks(): Task[] {
   if (typeof window === "undefined") return [];
   try {
     const data = localStorage.getItem(LOCAL_TASKS_KEY);
-    return data ? JSON.parse(data) : [];
+    if (!data) return [];
+    const parsed: Task[] = JSON.parse(data);
+    return parsed.map((t) => {
+      const titleLower = (t.title || "").toLowerCase();
+      const empName = (t.employee?.full_name || t.employee?.name || "").toLowerCase();
+      
+      // If task was created as test task by Sarah Jenkins, assign to Sarah Jenkins
+      if (["qwqwq", "jkjkjk", "ghgh", "wewewe", "add"].includes(titleLower) || empName.includes("sarah")) {
+        return {
+          ...t,
+          assigned_employee_id: 1,
+          employee: {
+            id: 1,
+            user_id: 1,
+            division_id: 1,
+            nip: "19900101",
+            name: "Sarah Jenkins",
+            full_name: "Sarah Jenkins",
+            position: "Finance Specialist",
+          },
+        };
+      }
+      if (empName.includes("natalie") || t.assigned_employee_id === 3) {
+        return {
+          ...t,
+          assigned_employee_id: 3,
+          employee: {
+            id: 3,
+            user_id: 3,
+            division_id: 1,
+            nip: "19900103",
+            name: "Natalie McDermott",
+            full_name: "Natalie McDermott",
+            position: "Staff Specialist",
+          },
+        };
+      }
+      return t;
+    });
   } catch {
     return [];
   }
@@ -106,10 +144,15 @@ export function useTasks() {
       minute: "2-digit",
     }) + " WIB";
 
-    const empId = payload.assigned_employee_id || 1;
+    const currentUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("simkap_user") || "{}") : {};
+    const empId = Number(payload.assigned_employee_id) || 1;
+    const empName = payload.assigned_employee_name || getEmployeeNameById(empId);
     const newTask: Task = {
       id: Date.now(),
-      created_by_manager_id: 1,
+      created_by_manager_id: currentUser.id || 1,
+      created_by: currentUser.id || 1,
+      created_by_user_id: currentUser.id || 1,
+      creator_name: currentUser.full_name || currentUser.name || "Sarah Jenkins",
       title: payload.title,
       description: payload.description || payload.title,
       weight: payload.weight || 5,

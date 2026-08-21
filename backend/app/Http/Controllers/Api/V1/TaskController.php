@@ -123,9 +123,12 @@ class TaskController extends Controller
             $submissionData = $request->validated();
 
             if ($request->hasFile('file')) {
-                $path = $request->file('file')->store('submissions', 'public');
+                $file = $request->file('file');
+                $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
+                $file->move(public_path('storage/submissions'), $filename);
+                $path = 'submissions/' . $filename;
                 $submissionData['file_path'] = $path;
-                $submissionData['submission_file'] = $path;
+                $submissionData['submission_file'] = $filename;
             }
 
             $submission = $this->taskService->submitTask($task, $submissionData);

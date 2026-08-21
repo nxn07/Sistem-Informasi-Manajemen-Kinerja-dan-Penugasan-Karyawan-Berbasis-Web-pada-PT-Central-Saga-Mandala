@@ -49,6 +49,11 @@ export default function ActivityLogsPage() {
 
   useEffect(() => {
     loadAuditLogs();
+    // Auto-refresh audit logs every 3 seconds in real-time
+    const interval = setInterval(() => {
+      loadAuditLogs();
+    }, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const filteredLogs = logs.filter(
@@ -62,14 +67,24 @@ export default function ActivityLogsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-          <span>Audit Log Aktivitas Sistem Central Saga</span>
-          <History className="w-6 h-6 text-blue-600 inline-block" />
-        </h1>
-        <p className="text-xs text-slate-500 mt-0.5 font-medium">
-          Catatan riwayat audit trail aktivitas penugasan, evaluasi, dan perubahan data pegawai.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            <span>Audit Log Aktivitas Sistem Central Saga</span>
+            <History className="w-6 h-6 text-blue-600 inline-block" />
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">
+            Catatan riwayat audit trail aktivitas penugasan, evaluasi, dan perubahan data pegawai.
+          </p>
+        </div>
+
+        <div className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-2xl text-xs font-black shadow-2xs shrink-0">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span>Live Auto-Sync Realtime (3s)</span>
+        </div>
       </div>
 
       {/* Sleek Floating Toolbar Search Bar (Clean Single Frame Without Double Borders) */}

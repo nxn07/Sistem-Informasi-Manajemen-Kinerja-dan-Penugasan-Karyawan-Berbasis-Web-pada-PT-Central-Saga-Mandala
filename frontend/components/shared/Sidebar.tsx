@@ -22,10 +22,10 @@ const menuItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["ADMIN", "MANAGER", "EMPLOYEE"] },
   { name: "Manajemen Tugas", href: "/tasks", icon: CheckSquare, roles: ["ADMIN", "MANAGER", "EMPLOYEE"] },
   { name: "Evaluasi Kinerja", href: "/evaluations", icon: Award, roles: ["ADMIN", "MANAGER", "EMPLOYEE"] },
-  { name: "Master Divisi", href: "/divisions", icon: Building2, roles: ["ADMIN"] },
-  { name: "Kriteria KPI", href: "/kpis", icon: Target, roles: ["ADMIN"] },
-  { name: "Manajemen User", href: "/users", icon: Users, roles: ["ADMIN"] },
-  { name: "Audit Log", href: "/activity-logs", icon: History, roles: ["ADMIN"] },
+  { name: "Master Divisi", href: "/divisions", icon: Building2, roles: ["ADMIN"], permission: "divisions.manage" },
+  { name: "Kriteria KPI", href: "/kpis", icon: Target, roles: ["ADMIN"], permission: "kpis.manage" },
+  { name: "Manajemen User", href: "/users", icon: Users, roles: ["ADMIN", "MANAGER"], permission: "users.delete" },
+  { name: "Audit Log", href: "/activity-logs", icon: History, roles: ["ADMIN"], permission: "logs.view" },
   { name: "Pengaturan", href: "/settings", icon: Settings, roles: ["ADMIN"] },
 ];
 
@@ -71,7 +71,14 @@ export default function Sidebar() {
               };
 
               const userRoles = getRawRoles().map(extractRoleName);
-              return item.roles.some((r) => userRoles.includes(r.toUpperCase()));
+              const hasRoleMatch = item.roles.some((r) => userRoles.includes(r.toUpperCase()));
+
+              const userPerms = user?.permissions || [];
+              const hasPermMatch = item.permission
+                ? userPerms.includes(item.permission) || userPerms.includes("*")
+                : false;
+
+              return hasRoleMatch || hasPermMatch;
             })
             .map((item) => {
               const Icon = item.icon;
