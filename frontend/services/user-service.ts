@@ -7,7 +7,35 @@ function getLocalUsers(): User[] {
   if (typeof window === "undefined") return [];
   try {
     const data = localStorage.getItem(LOCAL_USERS_KEY);
-    return data ? JSON.parse(data) : [];
+    if (!data) return [];
+    const parsed: User[] = JSON.parse(data);
+    return parsed.map((u) => {
+      const cleanEmail = u.email?.toLowerCase().trim();
+      const userRole = (u.role || u.roles?.[0] || "EMPLOYEE").toUpperCase();
+      const savedByEmail = cleanEmail ? localStorage.getItem(`simkap_user_perm_${cleanEmail}`) : null;
+
+      let perms = u.permissions;
+      if (savedByEmail) {
+        try {
+          perms = JSON.parse(savedByEmail);
+        } catch {
+          // ignore
+        }
+      }
+
+      if (userRole === "EMPLOYEE" && perms) {
+        perms = perms.filter((p: string) => ["tasks.create", "tasks.submit", "tasks.review"].includes(p));
+      } else if (userRole === "MANAGER" && perms) {
+        perms = perms.filter((p: string) => ["tasks.create", "tasks.submit", "tasks.review", "evaluations.create", "users.delete"].includes(p));
+      }
+
+      return {
+        ...u,
+        role: userRole,
+        roles: [userRole],
+        permissions: perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"]),
+      };
+    });
   } catch {
     return [];
   }
@@ -17,11 +45,12 @@ function saveLocalUser(user: User) {
   if (typeof window === "undefined") return;
   try {
     const existing = getLocalUsers();
-    const updated = [user, ...existing.filter((u) => u.id !== user.id)];
+    const cleanEmail = user.email?.toLowerCase().trim();
+    const updated = [user, ...existing.filter((u) => u.email?.toLowerCase().trim() !== cleanEmail)];
     localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
 
-    if (user.permissions) {
-      localStorage.setItem(`simkap_user_perm_${user.id}`, JSON.stringify(user.permissions));
+    if (user.permissions && cleanEmail) {
+      localStorage.setItem(`simkap_user_perm_${cleanEmail}`, JSON.stringify(user.permissions));
     }
   } catch {
     // ignore
@@ -30,27 +59,72 @@ function saveLocalUser(user: User) {
 
 function getFallbackUsers(): User[] {
   return [
-    { id: 1, name: "Sarah Jenkins", email: "sarah@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit", "tasks.create", "evaluations.view_own"], created_at: "2026-08-19" },
-    { id: 2, name: "Michael Ross", email: "michael@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 1, name: "Sarah Jenkins", email: "sarah@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 2, name: "Michael Ross", email: "michael@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit", "tasks.create"], created_at: "2026-08-19" },
     { id: 3, name: "Natalie McDermott", email: "natalie@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
     { id: 4, name: "Van Larkin", email: "van@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
     { id: 5, name: "Miss Felicity Runte", email: "felicity@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 6, name: "Manager Utama", email: "manager@gmail.com", role: "MANAGER", roles: ["MANAGER"], permissions: ["tasks.create", "tasks.review"], created_at: "2026-08-19" },
+    { id: 6, name: "Manager Utama", email: "manager@gmail.com", role: "MANAGER", roles: ["MANAGER"], permissions: ["tasks.create", "tasks.submit", "tasks.review"], created_at: "2026-08-19" },
     { id: 7, name: "Admin System", email: "admin@gmail.com", role: "ADMIN", roles: ["ADMIN"], permissions: ["*"], created_at: "2026-08-19" },
+    { id: 8, name: "Manager Operasional", email: "manager2@gmail.com", role: "MANAGER", roles: ["MANAGER"], permissions: ["tasks.create", "tasks.submit", "tasks.review"], created_at: "2026-08-19" },
   ];
 }
 
 function mergeUsers(serverUsers: User[], localUsers: User[]): User[] {
   const map = new Map<string, User>();
-  localUsers.forEach((u) => {
-    const key = (u.email || u.name || String(u.id)).toLowerCase().trim();
-    map.set(key, u);
-  });
+  
+  const fixedIdMap: Record<string, number> = {
+    "sarah@gmail.com": 1,
+    "michael@gmail.com": 2,
+    "natalie@gmail.com": 3,
+    "van@gmail.com": 4,
+    "felicity@gmail.com": 5,
+    "manager@gmail.com": 6,
+    "admin@gmail.com": 7,
+    "manager2@gmail.com": 8,
+  };
+
   serverUsers.forEach((u) => {
     const key = (u.email || u.name || String(u.id)).toLowerCase().trim();
     map.set(key, u);
   });
-  return Array.from(map.values());
+  localUsers.forEach((u) => {
+    const key = (u.email || u.name || String(u.id)).toLowerCase().trim();
+    const existing = map.get(key);
+    map.set(key, existing ? { ...existing, ...u } : u);
+  });
+
+  return Array.from(map.values()).map((user) => {
+    const cleanEmail = user.email?.toLowerCase().trim() || "";
+    const fixedId = fixedIdMap[cleanEmail] || user.id;
+    const userRole = (user.role || user.roles?.[0] || "EMPLOYEE").toUpperCase();
+
+    let perms = user.permissions;
+    if (typeof window !== "undefined" && cleanEmail) {
+      const savedByEmail = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
+      if (savedByEmail) {
+        try {
+          perms = JSON.parse(savedByEmail);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    if (userRole === "EMPLOYEE" && perms) {
+      perms = perms.filter((p: string) => ["tasks.create", "tasks.submit", "tasks.review"].includes(p));
+    } else if (userRole === "MANAGER" && perms) {
+      perms = perms.filter((p: string) => ["tasks.create", "tasks.submit", "tasks.review", "evaluations.create", "users.delete"].includes(p));
+    }
+
+    return {
+      ...user,
+      id: fixedId,
+      role: userRole,
+      roles: [userRole],
+      permissions: perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.review"] : ["tasks.submit"]),
+    };
+  });
 }
 
 export const userService = {

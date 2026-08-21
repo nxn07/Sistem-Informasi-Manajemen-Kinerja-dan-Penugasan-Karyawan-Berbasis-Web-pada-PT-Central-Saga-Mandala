@@ -101,12 +101,10 @@ export const authService = {
           const mockToken = `demo_token_${userRole}_${Date.now()}`;
           
           let savedPerms = found.permissions;
-          if (typeof window !== "undefined") {
+          if (typeof window !== "undefined" && cleanEmail) {
             try {
               const rawByEmail = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
-              const rawById = localStorage.getItem(`simkap_user_perm_${found.id}`);
-              const raw = rawByEmail || rawById;
-              if (raw) savedPerms = JSON.parse(raw);
+              if (rawByEmail) savedPerms = JSON.parse(rawByEmail);
             } catch {
               // ignore
             }
@@ -129,11 +127,13 @@ export const authService = {
         // ignore
       }
 
-      // Fallback default admin / manager / sarah
-      const mockRole = cleanEmail.includes("admin") ? "ADMIN" : cleanEmail.includes("manager") ? "MANAGER" : "EMPLOYEE";
+      // Fallback default admin / manager 1 / manager 2 / sarah
+      const isManager2 = cleanEmail.includes("manager2");
+      const isManager1 = cleanEmail.includes("manager") && !isManager2;
+      const mockRole = cleanEmail.includes("admin") ? "ADMIN" : (isManager1 || isManager2) ? "MANAGER" : "EMPLOYEE";
       const mockToken = `demo_token_${mockRole}_${Date.now()}`;
-      let defaultPerms = mockRole === "ADMIN" ? ["*"] : mockRole === "MANAGER" ? ["tasks.create", "tasks.review"] : ["tasks.submit"];
-      if (typeof window !== "undefined") {
+      let defaultPerms = mockRole === "ADMIN" ? ["*"] : mockRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"];
+      if (typeof window !== "undefined" && cleanEmail) {
         try {
           const raw = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
           if (raw) defaultPerms = JSON.parse(raw);
@@ -142,8 +142,8 @@ export const authService = {
         }
       }
       const mockUser: User = {
-        id: cleanEmail.includes("admin") ? 7 : cleanEmail.includes("manager") ? 6 : 1,
-        name: cleanEmail.includes("admin") ? "Admin System" : cleanEmail.includes("manager") ? "Manager Utama" : "Sarah Jenkins",
+        id: cleanEmail.includes("admin") ? 7 : isManager2 ? 8 : isManager1 ? 6 : 1,
+        name: cleanEmail.includes("admin") ? "Admin System" : isManager2 ? "Manager Operasional" : isManager1 ? "Manager Utama" : "Sarah Jenkins",
         email: cleanEmail,
         role: mockRole,
         roles: [mockRole],
@@ -179,11 +179,10 @@ export const authService = {
     const cachedUser = this.getCurrentUser();
 
     if (cachedUser) {
-      if (typeof window !== "undefined") {
+      if (typeof window !== "undefined" && cachedUser.email) {
         try {
-          const rawByEmail = localStorage.getItem(`simkap_user_perm_${cachedUser.email?.toLowerCase()}`);
-          const rawById = localStorage.getItem(`simkap_user_perm_${cachedUser.id}`);
-          const rawPerms = rawByEmail || rawById;
+          const cleanEmail = cachedUser.email.toLowerCase().trim();
+          const rawPerms = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
           if (rawPerms) {
             cachedUser.permissions = JSON.parse(rawPerms);
           }

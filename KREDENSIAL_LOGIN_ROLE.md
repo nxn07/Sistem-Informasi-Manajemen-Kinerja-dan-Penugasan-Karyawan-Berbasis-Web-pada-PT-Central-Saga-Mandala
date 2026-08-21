@@ -24,7 +24,8 @@
 | Role / Akses | Nama Pengguna | Email Login | Password | Jabatan / Peran |
 |:---|:---|:---|:---|:---|
 | 👑 **Super Admin** | Admin System | `admin@gmail.com` | `password` | Super Admin & Pengelola RBAC |
-| 👔 **Manager** | Manager Utama | `manager@gmail.com` | `password` | Senior Manager |
+| 👔 **Manager 1** | Manager Utama | `manager@gmail.com` | `password` | Senior General Manager |
+| 👔 **Manager 2** | Manager Operasional | `manager2@gmail.com` | `password` | Operations Manager |
 | 👤 **Employee 1** | Sarah Jenkins | `sarah@gmail.com` | `password` | Finance Specialist |
 | 👤 **Employee 2** | Michael Ross | `michael@gmail.com` | `password` | IT Operations |
 | 👤 **Employee 3** | Natalie McDermott | `natalie@gmail.com` | `password` | HR Specialist |
@@ -40,7 +41,8 @@
 | No | Peran (Role) | Email Login | Password | Nama Pengguna | Akses Menu & Fungsi |
 |:--:|:---|:---|:---|:---|:---|
 | 1 | 👑 **ADMIN** | `admin@gmail.com` | `password` | Admin System | **8 Menu Complete**: Full Super Admin, Kelola User, RBAC, Divisi, KPI, Audit Log |
-| 2 | 👔 **MANAGER** | `manager@gmail.com` | `password` | Manager Utama | **3 Menu Operasional**: Assign Tugas Baru, Review & Disetujui/Revisi, Evaluasi KPI |
+| 2 | 👔 **MANAGER 1** | `manager@gmail.com` | `password` | Manager Utama | **3 Menu Operasional**: Assign Tugas Baru, Review & Disetujui/Revisi, Evaluasi KPI |
+| 3 | 👔 **MANAGER 2** | `manager2@gmail.com` | `password` | Manager Operasional | **3 Menu Operasional**: Assign Tugas Baru, Review & Disetujui/Revisi, Evaluasi KPI |
 
 ### B. Role Employee (Staf Operasional / Karyawan)
 
@@ -57,7 +59,7 @@
 
 ---
 
-## 🛡️ 3. Matriks Hak Akses Spatie RBAC
+## 🛡️ 4. Matriks Hak Akses Spatie RBAC
 
 Tabel di bawah ini menjelaskan hak akses bawaan dan izin khusus (*Custom Permission*) yang dapat diatur via menu `/users`:
 
@@ -76,7 +78,22 @@ Tabel di bawah ini menjelaskan hak akses bawaan dan izin khusus (*Custom Permiss
 
 ---
 
-## 📋 4. Matriks Status Tugas & SOP Pengumpulan
+## 🔑 5. Penjelasan Lengkap Checkbox "Izin Akses Spesifik (Permissions)" (Lihat Modal Edit RBAC)
+
+Sistem **Central Saga** menerapkan pembagian opsi centang izin akses yang disesuaikan secara presisi berdasarkan **Role Utama** di modal Edit Hak Akses:
+
+### A. Opsi Checkbox Khusus Role EMPLOYEE (Staf Operasional)
+Bagi akun ber-role **EMPLOYEE**, opsi hak akses khusus manajemen (`users.manage`, `users.delete`, `evaluations.create`, `divisions.manage`) **SECARA OTOMATIS DIHAPUS DARI TAMPILAN CHECKLIST MODAL** untuk mencegah tumpang tindih kewenangan:
+1. 📝 **`tasks.create (Buat Tugas)`**: Memberikan hak bagi pegawai untuk membuat & mendelegasikan tugas baru (`+ Assign New Task`).
+2. 📤 **`tasks.submit (Submit Bukti)`**: Memberikan hak mengumpulkan dokumen / link bukti pekerjaan (`[ Kumpulkan Bukti ]`).
+3. 🔍 **`tasks.review (Review Atasan)`**: Memberikan hak peninjau (*Reviewer*) untuk menyetujui / meminta revisi tugas (`[ 👁️ Review & Berkas ]`).
+
+### B. Opsi Checkbox Khusus Role MANAGER & ADMIN
+Bagi akun ber-role **MANAGER** dan **ADMIN**, opsi tambahan manajemen tingkat tinggi seperti `users.manage` (Kelola User), `users.delete` (Hapus Karyawan), `evaluations.create` (Evaluasi KPI), dan `divisions.manage` (Master Divisi) tersedia lengkap untuk dikelola oleh Super Admin.
+
+---
+
+## 📋 6. Matriks Status Tugas & SOP Pengumpulan
 
 Alur resmi siklus pengerjaan tugas di Central Saga:
 
@@ -91,7 +108,7 @@ Alur resmi siklus pengerjaan tugas di Central Saga:
 
 ---
 
-## 🚀 5. Fitur Unggulan Sistem
+## 🚀 7. Fitur Unggulan Sistem
 
 1. **Detail & Live Document Viewer Modal (`TaskDetailModal`)**:
    * Menampilkan rincian tugas, bobot skor (1–10), nama pegawai & NIP, timestamp upload (`20 Ags 2026, 09:54 WIB`), jenis dokumen (PDF, Word, Excel, ZIP, Link Drive), serta tombol **`[ 🔗 Buka & Lihat Berkas Dokumen Langsung ]`**.
@@ -109,7 +126,7 @@ Alur resmi siklus pengerjaan tugas di Central Saga:
 
 ---
 
-## 🔄 6. Panduan Alur Pengujian (Step-by-Step)
+## 🔄 8. Panduan Alur Pengujian (Step-by-Step)
 
 1. **Langkah 1 (Admin)**:
    * Login `admin@gmail.com` / `password`.
