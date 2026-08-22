@@ -19,6 +19,7 @@ export interface User {
   roles: string[];
   permissions: string[];
   employee_id?: number;
+  status?: "ACTIVE" | "INACTIVE";
   created_at: string;
 }
 
@@ -84,6 +85,8 @@ export interface Task {
   created_by_user_id?: number;
   creator_name?: string;
   assigned_employee_id: number;
+  assignedTo?: string;
+  needs_reassignment?: boolean;
   division_id?: number | null;
   manager?: User;
   employee?: Employee;
@@ -95,6 +98,9 @@ export interface Task {
   submitted_at?: string | null;
   updated_at?: string | null;
   doc_type?: string | null;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 }
 
 export interface PerformanceEvaluation {

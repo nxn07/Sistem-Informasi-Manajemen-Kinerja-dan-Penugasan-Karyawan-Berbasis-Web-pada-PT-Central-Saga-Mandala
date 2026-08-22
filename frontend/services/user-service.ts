@@ -13,6 +13,7 @@ function getLocalUsers(): User[] {
       const cleanEmail = u.email?.toLowerCase().trim();
       const userRole = (u.role || u.roles?.[0] || "EMPLOYEE").toUpperCase();
       const savedByEmail = cleanEmail ? localStorage.getItem(`simkap_user_perm_${cleanEmail}`) : null;
+      const savedStatus = cleanEmail ? localStorage.getItem(`simkap_user_status_${cleanEmail}`) : null;
 
       let hasSavedPerms = false;
       let perms = u.permissions;
@@ -35,6 +36,7 @@ function getLocalUsers(): User[] {
         ...u,
         role: userRole,
         roles: [userRole],
+        status: (savedStatus as "ACTIVE" | "INACTIVE") || u.status || "ACTIVE",
         permissions: hasSavedPerms ? (perms || []) : (perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"])),
       };
     });
@@ -54,6 +56,9 @@ function saveLocalUser(user: User) {
     if (user.permissions && cleanEmail) {
       localStorage.setItem(`simkap_user_perm_${cleanEmail}`, JSON.stringify(user.permissions));
     }
+    if (user.status && cleanEmail) {
+      localStorage.setItem(`simkap_user_status_${cleanEmail}`, user.status);
+    }
   } catch {
     // ignore
   }
@@ -61,14 +66,14 @@ function saveLocalUser(user: User) {
 
 function getFallbackUsers(): User[] {
   return [
-    { id: 1, name: "Sarah Jenkins", email: "sarah@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 2, name: "Michael Ross", email: "michael@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit", "tasks.create"], created_at: "2026-08-19" },
-    { id: 3, name: "Natalie McDermott", email: "natalie@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 4, name: "Van Larkin", email: "van@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 5, name: "Miss Felicity Runte", email: "felicity@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 6, name: "Manager Utama", email: "manager@gmail.com", role: "MANAGER", roles: ["MANAGER"], permissions: ["tasks.create", "tasks.submit", "tasks.review"], created_at: "2026-08-19" },
-    { id: 7, name: "Admin System", email: "admin@gmail.com", role: "ADMIN", roles: ["ADMIN"], permissions: ["*"], created_at: "2026-08-19" },
-    { id: 8, name: "Manager Operasional", email: "manager2@gmail.com", role: "MANAGER", roles: ["MANAGER"], permissions: ["tasks.create", "tasks.submit", "tasks.review"], created_at: "2026-08-19" },
+    { id: 1, name: "Sarah Jenkins", email: "sarah@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 2, name: "Michael Ross", email: "michael@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit", "tasks.create"], created_at: "2026-08-19" },
+    { id: 3, name: "Natalie McDermott", email: "natalie@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 4, name: "Van Larkin", email: "van@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 5, name: "Miss Felicity Runte", email: "felicity@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], created_at: "2026-08-19" },
+    { id: 6, name: "Manager Utama", email: "manager@gmail.com", role: "MANAGER", roles: ["MANAGER"], status: "ACTIVE", permissions: ["tasks.create", "tasks.submit", "tasks.review"], created_at: "2026-08-19" },
+    { id: 7, name: "Admin System", email: "admin@gmail.com", role: "ADMIN", roles: ["ADMIN"], status: "ACTIVE", permissions: ["*"], created_at: "2026-08-19" },
+    { id: 8, name: "Manager Operasional", email: "manager2@gmail.com", role: "MANAGER", roles: ["MANAGER"], status: "ACTIVE", permissions: ["tasks.create", "tasks.submit", "tasks.review"], created_at: "2026-08-19" },
   ];
 }
 
@@ -103,6 +108,8 @@ function mergeUsers(serverUsers: User[], localUsers: User[]): User[] {
 
     let hasSavedPerms = false;
     let perms = user.permissions;
+    let userStatus: "ACTIVE" | "INACTIVE" = user.status || "ACTIVE";
+
     if (typeof window !== "undefined" && cleanEmail) {
       const savedByEmail = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
       if (savedByEmail !== null) {
@@ -112,6 +119,10 @@ function mergeUsers(serverUsers: User[], localUsers: User[]): User[] {
         } catch {
           // ignore
         }
+      }
+      const savedStatus = localStorage.getItem(`simkap_user_status_${cleanEmail}`);
+      if (savedStatus) {
+        userStatus = savedStatus as "ACTIVE" | "INACTIVE";
       }
     }
 
@@ -126,6 +137,7 @@ function mergeUsers(serverUsers: User[], localUsers: User[]): User[] {
       id: fixedId,
       role: userRole,
       roles: [userRole],
+      status: userStatus,
       permissions: hasSavedPerms ? (perms || []) : (perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"])),
     };
   });
@@ -172,6 +184,7 @@ export const userService = {
         email: payload.email || `user${newId}@centralsaga.com`,
         role,
         roles: [role],
+        status: "ACTIVE",
         permissions: payload.permissions || (role === "ADMIN" ? ["*"] : role === "MANAGER" ? ["tasks.create", "tasks.review"] : ["tasks.submit", "tasks.create"]),
         created_at: new Date().toISOString().split("T")[0],
       };
@@ -194,6 +207,7 @@ export const userService = {
         email: payload.email || "updated@gmail.com",
         role: payload.role || "EMPLOYEE",
         roles: [payload.role || "EMPLOYEE"],
+        status: "ACTIVE",
         permissions: [],
         created_at: new Date().toISOString().split("T")[0],
       };
@@ -203,16 +217,53 @@ export const userService = {
     }
   },
 
+  async toggleStatus(id: number): Promise<User> {
+    const all = await this.getAll();
+    const existing = all.find((u) => u.id === id);
+    if (!existing) throw new Error("User tidak ditemukan");
+
+    const currentStatus = existing.status || "ACTIVE";
+    const nextStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+    // If deactivating user, set all assigned tasks of this user to PENDING and mark for reassignment
+    if (nextStatus === "INACTIVE" && typeof window !== "undefined") {
+      try {
+        const rawTasks = localStorage.getItem("simkap_tasks_v2");
+        if (rawTasks) {
+          const tasks = JSON.parse(rawTasks);
+          const updatedTasks = tasks.map((t: any) => {
+            const isAssigned =
+              t.assigned_to_id === id ||
+              (t.assignedTo && t.assignedTo.toLowerCase().includes(existing.name.toLowerCase()));
+            if (isAssigned) {
+              return {
+                ...t,
+                status: "PENDING",
+                assignedTo: "Dialihkan (Non-Aktif)",
+                needs_reassignment: true,
+                previous_owner: existing.name,
+              };
+            }
+            return t;
+          });
+          localStorage.setItem("simkap_tasks_v2", JSON.stringify(updatedTasks));
+          window.dispatchEvent(new Event("simkap_tasks_updated"));
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const updated = await this.update(id, { status: nextStatus });
+    if (typeof window !== "undefined" && existing.email) {
+      localStorage.setItem(`simkap_user_status_${existing.email.toLowerCase().trim()}`, nextStatus);
+    }
+    return updated;
+  },
+
   async delete(id: number): Promise<void> {
-    try {
-      await apiClient.delete(`/users/${id}`);
-    } catch {
-      // ignore
-    }
-    if (typeof window !== "undefined") {
-      const local = getLocalUsers().filter((u) => u.id !== id);
-      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(local));
-    }
+    // Instead of permanent deletion, deactivate the user
+    await this.toggleStatus(id);
   },
 
   async updateRole(id: number, role: string): Promise<User> {

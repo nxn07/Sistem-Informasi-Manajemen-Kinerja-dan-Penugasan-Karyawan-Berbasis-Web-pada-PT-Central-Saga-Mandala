@@ -99,6 +99,7 @@ export const auditLogService = {
     if (typeof window === "undefined") return;
     try {
       localStorage.setItem(READ_TIMESTAMP_KEY, String(Date.now()));
+      window.dispatchEvent(new Event("simkap_audit_updated"));
     } catch {
       // ignore
     }
@@ -118,14 +119,13 @@ export const auditLogService = {
     try {
       const lastRead = auditLogService.getLastReadTime();
       if (lastRead === 0) {
-        const tenMinsAgo = Date.now() - 600000;
-        localStorage.setItem(READ_TIMESTAMP_KEY, String(tenMinsAgo));
+        localStorage.setItem(READ_TIMESTAMP_KEY, String(Date.now()));
+        return 0;
       }
-      const effectiveRead = auditLogService.getLastReadTime();
       const allLogs = await auditLogService.getAll();
       const unread = allLogs.filter((l) => {
         const itemTime = l.created_at ? new Date(l.created_at).getTime() : 0;
-        return itemTime > effectiveRead;
+        return itemTime > lastRead;
       });
       return unread.length;
     } catch {

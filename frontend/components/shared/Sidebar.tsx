@@ -27,7 +27,7 @@ const menuItems = [
   { name: "Master Divisi", href: "/divisions", icon: Building2, roles: ["ADMIN"], permission: "divisions.manage" },
   { name: "Kriteria KPI", href: "/kpis", icon: Target, roles: ["ADMIN"], permission: "kpis.manage" },
   { name: "Manajemen User", href: "/users", icon: Users, roles: ["ADMIN", "MANAGER"], permission: "users.delete" },
-  { name: "Audit Log", href: "/activity-logs", icon: History, roles: ["ADMIN", "MANAGER"] },
+  { name: "Log Aktivitas", href: "/activity-logs", icon: History, roles: ["ADMIN", "MANAGER"] },
   { name: "Pengaturan & Profil", href: "/settings", icon: Settings, roles: ["ADMIN", "MANAGER", "EMPLOYEE"] },
 ];
 
@@ -60,6 +60,7 @@ export default function Sidebar() {
     const updateCount = async () => {
       try {
         if (pathname === "/activity-logs") {
+          auditLogService.markAsRead();
           setLogCount(0);
           return;
         }
@@ -74,7 +75,7 @@ export default function Sidebar() {
     const handleAuditUpdate = () => updateCount();
     window.addEventListener("simkap_audit_updated", handleAuditUpdate);
     window.addEventListener("storage", handleAuditUpdate);
-    const interval = setInterval(updateCount, 2000);
+    const interval = setInterval(updateCount, 1500);
 
     return () => {
       window.removeEventListener("simkap_audit_updated", handleAuditUpdate);
@@ -84,7 +85,7 @@ export default function Sidebar() {
   }, [pathname]);
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between p-4 shrink-0 border-r border-slate-800">
+    <aside className="w-64 bg-slate-900 text-slate-100 h-screen sticky top-0 overflow-y-auto flex flex-col justify-between p-4 shrink-0 border-r border-slate-800 z-40">
       <div>
         {/* Brand Header with Official Central Saga Green Logo & Name */}
         <div className="px-3 py-4 mb-4 border-b border-slate-800 flex items-center gap-3">
@@ -137,7 +138,7 @@ export default function Sidebar() {
             .map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
-              const isAuditLog = item.name === "Audit Log";
+              const isAuditLog = item.name === "Log Aktivitas";
 
               return (
                 <Link

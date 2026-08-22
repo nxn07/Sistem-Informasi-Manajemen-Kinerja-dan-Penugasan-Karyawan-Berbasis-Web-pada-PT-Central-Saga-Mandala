@@ -10,10 +10,33 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
+    const loadUserData = () => {
+      const currentUser = authService.getCurrentUser();
+      setUser(currentUser);
+      if (currentUser?.email && typeof window !== "undefined") {
+        const cleanEmail = currentUser.email.trim().toLowerCase();
+        const savedAvatar = localStorage.getItem(`simkap_user_avatar_${cleanEmail}`);
+        if (savedAvatar) {
+          setAvatar(savedAvatar);
+        } else {
+          setAvatar(null);
+        }
+      }
+    };
+
+    loadUserData();
+
+    const handleUpdate = () => loadUserData();
+    window.addEventListener("simkap_user_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    return () => {
+      window.removeEventListener("simkap_user_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -35,7 +58,7 @@ export default function Navbar() {
       case "/users":
         return "Manajemen User & RBAC";
       case "/activity-logs":
-        return "Audit Log Aktivitas";
+        return "Log Aktivitas";
       case "/settings":
         return "Pengaturan Sistem";
       default:
@@ -67,7 +90,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-2xs">
+    <header className="sticky top-0 z-30 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-6 flex items-center justify-between shadow-2xs">
       {/* Dynamic Title based on Active Route */}
       <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
         <span className="text-slate-900 font-black text-sm capitalize tracking-normal">
@@ -79,10 +102,14 @@ export default function Navbar() {
 
       {/* Right Header Controls: User Profile & Logout */}
       <div className="flex items-center gap-4">
-        {/* User Info & Logout Button Pill Card with Elegant Shadow */}
+        {/* User Info & Logout Button Pill Card with Live Avatar */}
         <div className="flex items-center gap-3 bg-white p-1.5 pl-3.5 pr-2 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-700 to-teal-800 text-white font-extrabold flex items-center justify-center text-xs shadow-2xs">
-            {user?.name?.slice(0, 2).toUpperCase() || "CS"}
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-700 to-teal-800 text-white font-extrabold flex items-center justify-center text-xs shadow-2xs overflow-hidden border border-emerald-500/30 shrink-0">
+            {avatar ? (
+              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              user?.name?.slice(0, 2).toUpperCase() || "CS"
+            )}
           </div>
           <div className="text-right">
             <div className="flex items-center gap-1.5 justify-end">

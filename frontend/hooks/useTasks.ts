@@ -7,6 +7,7 @@ import {
   SubmitTaskPayload,
 } from "@/services/task-service";
 import { Task } from "@/types/api";
+import { auditLogService } from "@/services/audit-log-service";
 import Cookies from "js-cookie";
 
 const LOCAL_TASKS_KEY = "simkap_created_tasks";
@@ -177,6 +178,13 @@ export function useTasks() {
     saveLocalTask(newTask);
     setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
 
+    auditLogService.logActivity(
+      currentUser.name,
+      "TASK_CREATED",
+      "App\\Models\\Task",
+      `Pengguna '${currentUser.name || "User"}' (${currentUser.role || "EMPLOYEE"}) membuat tugas baru '${payload.title}'`
+    );
+
     // Fire-and-forget backend create call asynchronously
     taskService.create(payload).catch(() => {});
     return newTask;
@@ -191,11 +199,21 @@ export function useTasks() {
       minute: "2-digit",
     }) + " WIB";
 
+    const currentUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("simkap_user") || "{}") : {};
+
     // Optimistic UI state update (0ms instant)
     setTasks((prev) => {
       const updated = prev.map((t) => (t.id === taskId ? { ...t, status, updated_at: nowStr } : t));
       const target = updated.find((t) => t.id === taskId);
-      if (target) saveLocalTask(target);
+      if (target) {
+        saveLocalTask(target);
+        auditLogService.logActivity(
+          currentUser.name,
+          "TASK_STATUS_UPDATED",
+          "App\\Models\\Task",
+          `Pengguna '${currentUser.name || "User"}' (${currentUser.role || "EMPLOYEE"}) mengubah status tugas '${target.title}' menjadi ${status}`
+        );
+      }
       return updated;
     });
 
@@ -204,10 +222,98 @@ export function useTasks() {
   };
 
   const deleteTask = async (id: number) => {
-    // 1. Optimistic local state removal (0ms instant update)
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+    const currentUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("simkap_user") || "{}") : {};
+    const nowStr = new Date().toLocaleString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " WIB";
 
-    // 2. Remove from localStorage immediately
+    // 1. Soft-delete: Mark as deleted in state & localStorage (moved to Trash)
+    setTasks((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === id) {
+          return {
+            ...t,
+            is_deleted: true,
+            deleted_at: nowStr,
+            deleted_by: currentUser.name || currentUser.role || "Admin",
+          };
+        }
+        return t;
+      });
+      const target = prev.find((t) => t.id === id);
+      if (target) {
+        saveLocalTask({
+          ...target,
+          is_deleted: true,
+          deleted_at: nowStr,
+          deleted_by: currentUser.name || currentUser.role || "Admin",
+        });
+        auditLogService.logActivity(
+          currentUser.name,
+          "TASK_MOVED_TO_TRASH",
+          "App\\Models\\Task",
+          `Pengguna '${currentUser.name || "Admin"}' (${currentUser.role || "ADMIN"}) memindahkan tugas '${target.title}' ke Tempat Sampah`
+        );
+      }
+      return updated;
+    });
+  };
+
+  const restoreTask = async (id: number) => {
+    const currentUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("simkap_user") || "{}") : {};
+
+    // Restore task back to active state
+    setTasks((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === id) {
+          return {
+            ...t,
+            is_deleted: false,
+            deleted_at: undefined,
+            deleted_by: undefined,
+          };
+        }
+        return t;
+      });
+      const target = prev.find((t) => t.id === id);
+      if (target) {
+        saveLocalTask({
+          ...target,
+          is_deleted: false,
+          deleted_at: undefined,
+          deleted_by: undefined,
+        });
+        auditLogService.logActivity(
+          currentUser.name,
+          "TASK_RESTORED",
+          "App\\Models\\Task",
+          `Pengguna '${currentUser.name || "Admin"}' (${currentUser.role || "ADMIN"}) memulihkan tugas '${target.title}' dari Tempat Sampah`
+        );
+      }
+      return updated;
+    });
+  };
+
+  const permanentDeleteTask = async (id: number) => {
+    const currentUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("simkap_user") || "{}") : {};
+
+    setTasks((prev) => {
+      const target = prev.find((t) => t.id === id);
+      if (target) {
+        auditLogService.logActivity(
+          currentUser.name,
+          "TASK_PERMANENTLY_DELETED",
+          "App\\Models\\Task",
+          `Pengguna '${currentUser.name || "Admin"}' (${currentUser.role || "ADMIN"}) menghapus permanen tugas '${target.title}'`
+        );
+      }
+      return prev.filter((t) => t.id !== id);
+    });
+
     if (typeof window !== "undefined") {
       try {
         const local = getLocalTasks().filter((t) => t.id !== id);
@@ -217,7 +323,6 @@ export function useTasks() {
       }
     }
 
-    // 3. Fire-and-forget backend delete call asynchronously
     taskService.delete(id).catch(() => {});
   };
 
@@ -232,6 +337,7 @@ export function useTasks() {
 
     const fileNameOrLink = payload.file?.name || payload.submission_link || "Laporan_Bukti_Kerja_CentralSaga.pdf";
     const detectedDocType = getDocTypeLabel(fileNameOrLink);
+    const currentUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("simkap_user") || "{}") : {};
 
     // Optimistic UI state update (0ms instant)
     setTasks((prev) => {
@@ -251,7 +357,15 @@ export function useTasks() {
         return t;
       });
       const target = updated.find((t) => t.id === taskId);
-      if (target) saveLocalTask(target);
+      if (target) {
+        saveLocalTask(target);
+        auditLogService.logActivity(
+          currentUser.name,
+          "PROOF_SUBMITTED",
+          "App\\Models\\TaskSubmission",
+          `Pengguna '${currentUser.name || "Karyawan"}' (${currentUser.role || "EMPLOYEE"}) mengunggah bukti penyelesaian tugas '${target.title}': '${fileNameOrLink}'`
+        );
+      }
       return updated;
     });
 
@@ -272,11 +386,21 @@ export function useTasks() {
       minute: "2-digit",
     }) + " WIB";
 
+    const currentUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("simkap_user") || "{}") : {};
+
     // Optimistic UI state update (0ms instant)
     setTasks((prev) => {
       const updated = prev.map((t) => (t.id === taskId ? { ...t, status: status as Task["status"], updated_at: nowStr } : t));
       const target = updated.find((t) => t.id === taskId);
-      if (target) saveLocalTask(target);
+      if (target) {
+        saveLocalTask(target);
+        auditLogService.logActivity(
+          currentUser.name,
+          "TASK_REVIEWED",
+          "App\\Models\\Task",
+          `Pengguna '${currentUser.name || "Manager"}' (${currentUser.role || "MANAGER"}) meninjau tugas '${target.title}': Status (${status})`
+        );
+      }
       return updated;
     });
 
@@ -292,6 +416,8 @@ export function useTasks() {
     createTask,
     updateTaskStatus,
     deleteTask,
+    restoreTask,
+    permanentDeleteTask,
     submitTask,
     reviewTask,
   };

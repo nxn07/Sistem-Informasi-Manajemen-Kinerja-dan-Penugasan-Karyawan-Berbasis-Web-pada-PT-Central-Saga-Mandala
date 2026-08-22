@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Footer from "@/components/shared/Footer";
 import { useAuth } from "@/hooks/useAuth";
+import { userService } from "@/services/user-service";
+import { User } from "@/types/api";
 import { auditLogService } from "@/services/audit-log-service";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { SubmitTaskModal } from "@/components/tasks/SubmitTaskModal";
@@ -29,6 +32,7 @@ import {
   Eye,
   Edit3,
   Sparkles,
+  X,
 } from "lucide-react";
 import { Task } from "@/types/api";
 
@@ -56,11 +60,14 @@ export default function TasksPage() {
     tasks,
     loading,
     error,
+    refetch,
     createTask,
     updateTaskStatus,
     submitTask,
     reviewTask,
     deleteTask,
+    restoreTask,
+    permanentDeleteTask,
   } = useTasks();
 
   // View Mode: 'table' or 'grid'
@@ -89,6 +96,85 @@ export default function TasksPage() {
   } | null>(null);
   const [reviewTaskTarget, setReviewTaskTarget] = useState<Task | null>(null);
   const [selectedDetailTask, setSelectedDetailTask] = useState<Task | null>(null);
+  const [reassignTaskTarget, setReassignTaskTarget] = useState<Task | null>(null);
+  const [activeUsers, setActiveUsers] = useState<User[]>([]);
+  const [selectedNewAssignee, setSelectedNewAssignee] = useState<string>("");
+
+  useEffect(() => {
+    userService.getAll().then((data) => {
+      const active = data.filter((u) => u.status !== "INACTIVE");
+      setActiveUsers(active);
+      if (active.length > 0) setSelectedNewAssignee(active[0].name);
+    });
+  }, []);
+
+  const handleReassignSubmit = async () => {
+    if (!reassignTaskTarget || !selectedNewAssignee) return;
+    try {
+      const targetAssigneeUser = activeUsers.find((u) => u.name === selectedNewAssignee);
+
+      const updatedTask: Task = {
+        ...reassignTaskTarget,
+        assignedTo: selectedNewAssignee,
+        assigned_employee_id: targetAssigneeUser?.id || reassignTaskTarget.assigned_employee_id,
+        employee: {
+          id: targetAssigneeUser?.id || 1,
+          user_id: targetAssigneeUser?.id || 1,
+          division_id: 1,
+          nip: "EMP-" + (targetAssigneeUser?.id || 1),
+          name: selectedNewAssignee,
+          full_name: selectedNewAssignee,
+          position: targetAssigneeUser?.role || "EMPLOYEE",
+        },
+        status: "IN_PROGRESS",
+        needs_reassignment: false,
+      };
+
+      if (typeof window !== "undefined") {
+        // 1. Save to simkap_created_tasks (authoritative key in useTasks)
+        const rawCreated = localStorage.getItem("simkap_created_tasks");
+        let createdList: Task[] = rawCreated ? JSON.parse(rawCreated) : [];
+        const existsInCreated = createdList.some((t) => t.id === reassignTaskTarget.id);
+        if (existsInCreated) {
+          createdList = createdList.map((t) => (t.id === reassignTaskTarget.id ? updatedTask : t));
+        } else {
+          createdList.push(updatedTask);
+        }
+        localStorage.setItem("simkap_created_tasks", JSON.stringify(createdList));
+
+        // 2. Save to simkap_tasks_v2 for backward compatibility
+        const rawV2 = localStorage.getItem("simkap_tasks_v2");
+        if (rawV2) {
+          const listV2 = JSON.parse(rawV2);
+          const updatedV2 = listV2.map((t: any) => (t.id === reassignTaskTarget.id ? updatedTask : t));
+          localStorage.setItem("simkap_tasks_v2", JSON.stringify(updatedV2));
+        }
+
+        window.dispatchEvent(new Event("simkap_tasks_updated"));
+        window.dispatchEvent(new Event("storage"));
+      }
+
+      auditLogService.logActivity(
+        user?.name,
+        "TASK_REASSIGNED",
+        "App\\Models\\Task",
+        `Pengguna '${user?.name || "Admin"}' (${user?.role || "ADMIN"}) memindahkan tugas '${reassignTaskTarget.title}' ke karyawan '${selectedNewAssignee}'`
+      );
+
+      await refetch();
+
+      setToast({
+        type: "success",
+        message: `Tugas '${reassignTaskTarget.title}' berhasil dipindahkan ke '${selectedNewAssignee}'!`,
+      });
+      setReassignTaskTarget(null);
+    } catch {
+      setToast({
+        type: "error",
+        message: "Gagal memindahkan tugas.",
+      });
+    }
+  };
 
   // Listen for custom edit document events from detail modal
   useEffect(() => {
@@ -119,8 +205,13 @@ export default function TasksPage() {
   }, [tasks]);
 
   // Computed Filtered Tasks
+  const [isRecycleBinOpen, setIsRecycleBinOpen] = useState(false);
+
+  const activeTasks = useMemo(() => tasks.filter((t) => !t.is_deleted), [tasks]);
+  const trashedTasks = useMemo(() => tasks.filter((t) => t.is_deleted), [tasks]);
+
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    return activeTasks.filter((task) => {
       const empName = (task.employee?.full_name || task.employee?.name || "").toLowerCase().trim();
       const loggedUserName = (user?.full_name || user?.name || "Sarah Jenkins").toLowerCase().trim();
       
@@ -154,7 +245,7 @@ export default function TasksPage() {
 
       return matchesEmployeeFilter && matchesSearch && matchesStatus;
     });
-  }, [tasks, searchQuery, selectedStatus, isEmployee, employeeFilter, user]);
+  }, [activeTasks, searchQuery, selectedStatus, isEmployee, employeeFilter, user]);
 
   // Helper Badge Renderers
   const getStatusBadge = (status: Task["status"]): React.ReactNode => {
@@ -418,6 +509,23 @@ export default function TasksPage() {
             </button>
           </div>
 
+          {/* Tombol Tempat Sampah Penugasan (Admin & Manager) */}
+          {isAdminOrManager && (
+            <button
+              onClick={() => setIsRecycleBinOpen(true)}
+              className="flex items-center justify-center gap-2 h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-extrabold transition-all shadow-2xs border border-slate-300 cursor-pointer relative shrink-0"
+              title="Tempat Sampah Penugasan (Recycle Bin)"
+            >
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              <span>Tempat Sampah</span>
+              {trashedTasks.length > 0 && (
+                <span className="ml-1 px-2 py-0.5 text-[10px] font-black rounded-full bg-rose-600 text-white">
+                  {trashedTasks.length}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Tombol Tambah Tugas */}
           {canCreateTask && (
             <button
@@ -610,7 +718,7 @@ export default function TasksPage() {
                 {filteredTasks.map((task, idx) => {
                   const docLabel = task.doc_type || getDocTypeLabel(task.submission_file || task.submission_link);
                   const lastModified = task.submitted_at || task.updated_at || "20 Ags 2026, 09:30 WIB";
-                  const empName = task.employee?.full_name || task.employee?.name || "";
+                  const empName = task.assignedTo || task.employee?.full_name || task.employee?.name || "";
                   const loggedUserName = user?.name || "Sarah Jenkins";
                   
                   const isTaskAssignedToMe =
@@ -814,6 +922,18 @@ export default function TasksPage() {
                                 </button>
 
                                 <button
+                                  onClick={() => {
+                                    setReassignTaskTarget(task);
+                                    if (activeUsers.length > 0) setSelectedNewAssignee(activeUsers[0].name);
+                                  }}
+                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-900 text-[11px] font-bold rounded-lg transition-all cursor-pointer border border-amber-300 shadow-2xs flex items-center gap-1"
+                                  title="Pindahkan Tugas ke Karyawan Lain (Pegawai Non-Aktif / Reassign)"
+                                >
+                                  <UserCheck className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>Pindahkan</span>
+                                </button>
+
+                                <button
                                   onClick={() => handleDelete(task.id)}
                                   className="p-1 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border border-slate-200/80 hover:border-rose-300"
                                   title="Delete Task"
@@ -849,7 +969,7 @@ export default function TasksPage() {
           {filteredTasks.map((task) => {
             const docLabel = task.doc_type || getDocTypeLabel(task.submission_file || task.submission_link);
             const lastModified = task.submitted_at || task.updated_at || "20 Ags 2026, 09:30 WIB";
-            const empName = task.employee?.full_name || task.employee?.name || "";
+            const empName = task.assignedTo || task.employee?.full_name || task.employee?.name || "";
             const loggedUserName = user?.name || "Sarah Jenkins";
             
             const isTaskAssignedToMe =
@@ -1049,6 +1169,204 @@ export default function TasksPage() {
           })
         }
       />
+
+      {/* Modal Pindahkan Tugas (Reassign Task to Active Employee) */}
+      {reassignTaskTarget && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200/80 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-200 shadow-2xs">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    Pindahkan Tugas Karyawan
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium">
+                    Tugas: <span className="font-bold text-slate-700">{reassignTaskTarget.title}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReassignTaskTarget(null)}
+                className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs font-medium">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
+                <p className="font-bold text-xs">Pemilik Tugas Saat Ini:</p>
+                <p className="text-xs font-black mt-0.5">{reassignTaskTarget.assignedTo || reassignTaskTarget.employee?.full_name || reassignTaskTarget.employee?.name || "Belum Ditentukan"}</p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Pilih Karyawan Baru (Aktif):
+                </label>
+                <select
+                  value={selectedNewAssignee}
+                  onChange={(e) => setSelectedNewAssignee(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-xs font-bold bg-white"
+                >
+                  {activeUsers.map((u) => (
+                    <option key={u.id} value={u.name}>
+                      {u.name} ({u.role || "EMPLOYEE"}) — {u.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setReassignTaskTarget(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleReassignSubmit}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-md border border-amber-700 cursor-pointer"
+              >
+                Konfirmasi Pindahkan Tugas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Executive Recycle Bin / Tempat Sampah Modal */}
+      {isRecycleBinOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-300 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-400">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base flex items-center gap-2">
+                    <span>Tempat Sampah Penugasan (Recycle Bin)</span>
+                    <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-rose-600 text-white">
+                      {trashedTasks.length} Tugas
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-300 font-medium">
+                    Daftar tugas yang dihapus dari sistem. Admin & Manager dapat memulihkan (restore) tugas ini kembali.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsRecycleBinOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body Table */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {trashedTasks.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 space-y-3">
+                  <Trash2 className="w-12 h-12 text-slate-300 mx-auto" />
+                  <p className="font-extrabold text-slate-700 text-sm">Tempat Sampah Kosong</p>
+                  <p className="text-xs text-slate-400">Tidak ada tugas yang dihapus saat ini.</p>
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-900 text-white text-[11px] font-black uppercase">
+                        <th className="py-3 px-4 w-10 border-r border-slate-800 text-center">NO.</th>
+                        <th className="py-3 px-4 border-r border-slate-800">JUDUL TUGAS</th>
+                        <th className="py-3 px-4 border-r border-slate-800">DITUGASKAN KEPADA</th>
+                        <th className="py-3 px-4 border-r border-slate-800">STATUS SEBELUMNYA</th>
+                        <th className="py-3 px-4 border-r border-slate-800">WAKTU DIHAPUS</th>
+                        <th className="py-3 px-4 text-center">AKSI RECOVERY</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 font-semibold text-slate-800">
+                      {trashedTasks.map((t, idx) => (
+                        <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-3 px-4 text-center text-slate-400 font-bold border-r border-slate-200">
+                            {String(idx + 1).padStart(2, "0")}
+                          </td>
+                          <td className="py-3 px-4 border-r border-slate-200 max-w-[220px]">
+                            <p className="font-extrabold text-slate-900 truncate">{t.title}</p>
+                            <p className="text-[11px] text-slate-500 truncate">{t.description || "Tanpa deskripsi"}</p>
+                          </td>
+                          <td className="py-3 px-4 border-r border-slate-200 font-bold text-slate-900">
+                            {t.assignedTo || t.employee?.full_name || t.employee?.name || "Karyawan"}
+                          </td>
+                          <td className="py-3 px-4 border-r border-slate-200">
+                            {getStatusBadge(t.status)}
+                          </td>
+                          <td className="py-3 px-4 border-r border-slate-200 whitespace-nowrap text-[11px] text-slate-600">
+                            <p className="font-bold text-slate-800">{t.deleted_at || "Baru saja"}</p>
+                            <p className="text-[10px] text-slate-400 font-medium">Oleh: {t.deleted_by || "Admin"}</p>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={async () => {
+                                  await restoreTask(t.id);
+                                  setToast({
+                                    type: "success",
+                                    message: `Tugas '${t.title}' berhasil dipulihkan kembali ke penugasan aktif!`,
+                                  });
+                                }}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 border border-emerald-700"
+                                title="Pulihkan Tugas Kembali"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Pulihkan</span>
+                              </button>
+
+                              {rawRole === "ADMIN" && (
+                                <button
+                                  onClick={async () => {
+                                    if (confirm(`Hapus permanen tugas '${t.title}'? Tindakan ini tidak dapat dibatalkan.`)) {
+                                      await permanentDeleteTask(t.id);
+                                      setToast({
+                                        type: "success",
+                                        message: `Tugas '${t.title}' telah dihapus secara permanen.`,
+                                      });
+                                    }
+                                  }}
+                                  className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white font-bold text-[11px] rounded-xl transition-all cursor-pointer border border-rose-200"
+                                  title="Hapus Permanen"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={() => setIsRecycleBinOpen(false)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-sm cursor-pointer"
+              >
+                Tutup Tempat Sampah
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

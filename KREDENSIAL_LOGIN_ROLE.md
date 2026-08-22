@@ -2,13 +2,15 @@
 **Central Saga Enterprise Performance (SIM-KAP)**
 
 > [!NOTE]
-> Dokumen ini berisi rincian kredensial login seluruh peranan (*Roles*), izin khusus (*Permissions*), matriks hak akses **Spatie RBAC**, serta panduan alur kerja operasional (*SOP Workflow*) pada sistem **Central Saga**.
+> Dokumen ini berisi rincian kredensial login seluruh peranan (*Roles*), status keaktifan akun, izin khusus (*Permissions*), matriks hak akses **Spatie RBAC**, fitur pemindahan tugas pegawai non-aktif, serta panduan alur kerja operasional (*SOP Workflow*) pada sistem **Central Saga**.
 
 ---
 
 ## 📍 1. URL Akses Sistem
 
 * **Halaman Login**: [http://localhost:3000/login](http://localhost:3000/login)
+* **Reset Password**: [http://localhost:3000/reset-password](http://localhost:3000/reset-password)
+* **Dashboard Overview**: [http://localhost:3000](http://localhost:3000)
 * **Manajemen Tugas**: [http://localhost:3000/tasks](http://localhost:3000/tasks)
 * **Evaluasi Kinerja**: [http://localhost:3000/evaluations](http://localhost:3000/evaluations)
 * **Manajemen User & RBAC**: [http://localhost:3000/users](http://localhost:3000/users)
@@ -19,18 +21,19 @@
 ## ⚡ 2. Ringkasan Cepat Email & Password Login (Siap Copy-Paste)
 
 > [!TIP]
-> **Password Seluruh Akun**: `password`
+> **Password Bawaan Seluruh Akun**: `password`  
+> *(Catatan: Password dapat diubah secara mandiri melalui menu [Reset Password](http://localhost:3000/reset-password) dengan konfirmasi OTP ke email testing default `putra.timur804@gmail.com`)*
 
-| Role / Akses | Nama Pengguna | Email Login | Password | Jabatan / Peran |
-|:---|:---|:---|:---|:---|
-| 👑 **Super Admin** | Admin System | `admin@gmail.com` | `password` | Super Admin & Pengelola RBAC |
-| 👔 **Manager 1** | Manager Utama | `manager@gmail.com` | `password` | Senior General Manager |
-| 👔 **Manager 2** | Manager Operasional | `manager2@gmail.com` | `password` | Operations Manager |
-| 👤 **Employee 1** | Sarah Jenkins | `sarah@gmail.com` | `password` | Finance Specialist |
-| 👤 **Employee 2** | Michael Ross | `michael@gmail.com` | `password` | IT Operations |
-| 👤 **Employee 3** | Natalie McDermott | `natalie@gmail.com` | `password` | HR Specialist |
-| 👤 **Employee 4** | Van Larkin | `van@gmail.com` | `password` | Legal Counsel |
-| 👤 **Employee 5** | Miss Felicity Runte | `felicity@gmail.com` | `password` | Staff Specialist |
+| Role / Akses | Nama Pengguna | Email Login | Password Bawaan | Status Akun | Jabatan / Peran |
+|:---|:---|:---|:---|:---:|:---|
+| 👑 **Super Admin** | Admin System | `admin@gmail.com` | `password` | 🟢 AKTIF | Super Admin & Pengelola RBAC |
+| 👔 **Manager 1** | Manager Utama | `manager@gmail.com` | `password` | 🟢 AKTIF | Senior General Manager |
+| 👔 **Manager 2** | Manager Operasional | `manager2@gmail.com` | `password` | 🟢 AKTIF | Operations Manager |
+| 👤 **Employee 1** | Sarah Jenkins | `sarah@gmail.com` | `password` | 🟢 AKTIF | Finance Specialist |
+| 👤 **Employee 2** | Michael Ross | `michael@gmail.com` | `password` | 🟢 AKTIF | IT Operations |
+| 👤 **Employee 3** | Natalie McDermott | `natalie@gmail.com` | `password` | 🟢 AKTIF | HR Specialist |
+| 👤 **Employee 4** | Van Larkin | `van@gmail.com` | `password` | 🟢 AKTIF | Legal Counsel |
+| 👤 **Employee 5** | Miss Felicity Runte | `felicity@gmail.com` | `password` | 🟢 AKTIF | Staff Specialist |
 
 ---
 
@@ -40,9 +43,9 @@
 
 | No | Peran (Role) | Email Login | Password | Nama Pengguna | Izin Akses Spesifik (Permissions Modal RBAC) | Akses Fitur Utama |
 |:--:|:---|:---|:---|:---|:---|:---|
-| 1 | 👑 **ADMIN** | `admin@gmail.com` | `password` | Admin System | `tasks.create`, `tasks.submit`, `tasks.review`, `users.manage`, `users.delete`, `evaluations.create`, `divisions.manage` (Full `*`) | **Full Super Admin**: Kelola User, Edit RBAC, Master Divisi, KPI Criteria, Audit Log |
-| 2 | 👔 **MANAGER 1** | `manager@gmail.com` | `password` | Manager Utama | `tasks.create`, `tasks.submit`, `tasks.review`, `evaluations.create (Opsional)`, `users.delete (Opsional)` | **5 Opsi Manager**: Assign Tugas Baru, Submit Bukti, Review & Persetujuan, Evaluasi KPI, Hapus User |
-| 3 | 👔 **MANAGER 2** | `manager2@gmail.com` | `password` | Manager Operasional | `tasks.create`, `tasks.submit`, `tasks.review`, `evaluations.create (Opsional)`, `users.delete (Opsional)` | **5 Opsi Manager**: Assign Tugas Baru, Submit Bukti, Review & Persetujuan, Evaluasi KPI, Hapus User |
+| 1 | 👑 **ADMIN** | `admin@gmail.com` | `password` | Admin System | `tasks.create`, `tasks.submit`, `tasks.review`, `users.manage`, `users.delete`, `evaluations.create`, `divisions.manage` (Full `*`) | **Full Super Admin**: Kelola User, Status Keaktifan, Edit RBAC, Pindahkan Tugas, Master Divisi, KPI Criteria, Audit Log |
+| 2 | 👔 **MANAGER 1** | `manager@gmail.com` | `password` | Manager Utama | `tasks.create`, `tasks.submit`, `tasks.review`, `evaluations.create`, `users.delete` | **Akses Manager**: Assign Tugas Baru, Pindahkan Tugas Non-Aktif, Submit Bukti, Review & Persetujuan, Evaluasi KPI, Kelola Status User |
+| 3 | 👔 **MANAGER 2** | `manager2@gmail.com` | `password` | Manager Operasional | `tasks.create`, `tasks.submit`, `tasks.review`, `evaluations.create`, `users.delete` | **Akses Manager**: Assign Tugas Baru, Pindahkan Tugas Non-Aktif, Submit Bukti, Review & Persetujuan, Evaluasi KPI, Kelola Status User |
 
 ### B. Role Employee (Staf Operasional / Karyawan)
 
@@ -55,98 +58,99 @@
 | 5 | 👤 **EMPLOYEE 5** | `felicity@gmail.com` | `password` | Miss Felicity Runte | Staff Specialist | `tasks.create`, `tasks.submit`, `tasks.review` | Mulai Kerja, Submit Bukti, Filter Tugas Saya |
 
 > [!IMPORTANT]
-> **Akun Baru**: Pengguna baru yang didaftarkan melalui menu `/users` dapat langsung diloginkan menggunakan email baru tersebut dan password default: **`password`**.
+> **Akun Baru & Status**: Pengguna baru yang didaftarkan melalui menu `/users` secara otomatis memiliki status **`🟢 AKTIF`** dan dapat langsung diloginkan menggunakan password default: **`password`**.
 
 ---
 
-## 🛡️ 4. Matriks Hak Akses Spatie RBAC
+## 🚫 4. Fitur Nonaktifkan User & Pemindahan Tugas (Reassignment Engine)
 
-Tabel di bawah ini menjelaskan hak akses bawaan dan izin khusus (*Custom Permission*) yang dapat diatur via modal Edit Hak Akses di menu `/users`:
+Sistem **Central Saga** menerapkan mekanisme pengganti penghapusan permanen dengan **Sistem Non-Aktifkan Akun & Pemindahan Tugas Otomatis**:
+
+1. ⛔ **Penonaktifan Akun (Disabling Account Access)**:
+   - Admin dan Manager dapat mengklik tombol **`[ ⛔ Nonaktifkan ]`** pada menu `/users` atau melalui panel **Status Keaktifan Akun** di dalam modal Edit Hak Akses.
+   - User yang dinonaktifkan ditandai dengan badge khusus **`🔴 NON-AKTIF`**.
+   - **Blokir Akses Login**: Akun dengan status `INACTIVE` **TIDAK BISA LOGIN** ke dalam sistem. Percobaan login akan ditolak secara otomatis oleh sistem.
+
+2. 🔄 **Pengalihan Otomatis Tugas ke Status `PENDING`**:
+   - Saat pengguna dinonaktifkan, seluruh tugas yang dialokasikan kepada pengguna tersebut **secara otomatis diubah statusnya menjadi `PENDING`** dan ditandai membutuhkan pengalihan (*Reassignment Required*).
+
+3. 💼 **Fitur Pemindahan Tugas Khusus Manager & Admin (`/tasks`)**:
+   - Pada halaman **Manajemen Tugas (`/tasks`)**, untuk role **Manager dan Admin** disediakan tombol **`[ 🔄 Pindahkan ]`**.
+   - Saat diklik, modal **Pindahkan Tugas Karyawan** akan terbuka, menampilkan pemilik tugas saat ini dan menyediakan dropdown pilihan **Karyawan Aktif Baru**.
+   - Setelah dikonfirmasi, tugas secara resmi dipindahkan ke karyawan aktif terpilih dan statusnya diperbarui menjadi **`IN_PROGRESS`**.
+
+---
+
+## 🛡️ 5. Matriks Hak Akses Spatie RBAC & Pembatasan Modal Role
+
+Tabel di bawah ini menjelaskan hak akses bawaan dan izin khusus (*Custom Permission*) yang diatur secara presisi dalam modal Edit Hak Akses di menu `/users`:
 
 | Kunci Permission | Fitur yang Diizinkan | EMPLOYEE | MANAGER | ADMIN |
 |:---|:---|:--:|:--:|:--:|
 | **`tasks.create`** | Membuat & assign tugas baru (`+ Assign New Task`) | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Dicentang Bawaan) | 🟢 Ya (Super Admin) |
 | **`tasks.submit`** | Unggah berkas / link bukti penyelesaian tugas | 🟢 Ya (Bawaan Utama) | 🟢 Ya (Dicentang Bawaan) | 🟢 Ya (Super Admin) |
 | **`tasks.review`** | Meninjau, menyetujui, atau meminta revisi tugas | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Dicentang Bawaan) | 🟢 Ya (Super Admin) |
-| **`evaluations.create`** | Mengisi slider KPI & menerbitkan evaluasi bulanan | ❌ Tidak Tersedia *(Dihapus)* | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Super Admin) |
+| **`evaluations.create`** | Mengisi slider KPI & menerbitkan evaluasi bulanan | ❌ Tidak Tersedia | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Super Admin) |
 | **`evaluations.view_own`** | Melihat kartu skor evaluasi mandiri (*Private Mode*) | 🟢 Ya (Bawaan Utama) | 🟢 Ya (Bawaan Utama) | 🟢 Ya (Super Admin) |
-| **`users.manage`** | Buka menu & edit modal Spatie RBAC `/users` | ❌ Tidak Tersedia *(Dihapus)* | ❌ Tidak Tersedia *(Dihapus)* | 🟢 Ya (Super Admin) |
-| **`users.delete`** | Menghapus data akun karyawan / pengguna dari sistem | ❌ Tidak Tersedia *(Dihapus)* | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Super Admin) |
-| **`divisions.manage`** | Mengelola master data divisi & departemen | ❌ Tidak Tersedia *(Dihapus)* | ❌ Tidak Tersedia *(Dihapus)* | 🟢 Ya (Super Admin) |
-| **`kpis.manage`** | Mengatur kriteria & bobot persentase KPI (100%) | ❌ Tidak Tersedia *(Dihapus)* | ❌ Tidak Tersedia *(Dihapus)* | 🟢 Ya (Super Admin) |
-| **`logs.view`** | Melihat riwayat audit log aktivitas sistem | ❌ Tidak Tersedia *(Dihapus)* | ❌ Tidak Tersedia *(Dihapus)* | 🟢 Ya (Super Admin) |
+| **`users.manage`** | Buka menu & edit modal Spatie RBAC `/users` | ❌ Tidak Tersedia | ❌ Tidak Tersedia | 🟢 Ya (Super Admin) |
+| **`users.delete`** | Mengelola status keaktifan & nonaktifkan user | ❌ Tidak Tersedia | ⚪ *(Dapat Dicentang di Modal)* | 🟢 Ya (Super Admin) |
+| **`divisions.manage`** | Mengelola master data divisi & departemen | ❌ Tidak Tersedia | ❌ Tidak Tersedia | 🟢 Ya (Super Admin) |
+
+### 🔒 Pembatasan Tampilan Modal Edit Hak Akses Sesuai Role (Role-Locked Indicator)
+- **Role EMPLOYEE (`👤 EMPLOYEE`)**: Hanya menampilkan opsi/badge **`👤 EMPLOYEE` (Terbatas khusus role EMPLOYEE)** dan daftar izin khusus Employee (`tasks.create`, `tasks.submit`, `tasks.review`). Opsi memilih role Admin / Manager disembunyikan total.
+- **Role MANAGER (`💼 MANAGER`)**: Hanya menampilkan opsi/badge **`💼 MANAGER`** dan daftar izin khusus Manager (`tasks.create`, `tasks.submit`, `tasks.review`, `evaluations.create`, `users.delete`).
+- **Role ADMIN (`👑 ADMIN`)**: Hanya menampilkan opsi/badge **`👑 ADMIN`** dan daftar izin penuh Admin.
 
 ---
 
-## 🔑 5. Penjelasan Lengkap Checkbox "Izin Akses Spesifik (Permissions)" (Lihat Modal Edit RBAC)
+## 🎨 6. Tampilan Layout & Footer Fixed Edge-to-Edge
 
-Sistem **Central Saga** menerapkan pembagian opsi centang izin akses yang disesuaikan secara presisi berdasarkan **Role Utama** pada modal Edit Hak Akses:
+1. 📌 **Footer Floating Fixed Bottom (`fixed bottom-0 left-0 md:left-64 right-0 z-40 bg-white/95`)**:
+   - Footer terkunci secara permanen di permukaan paling bawah layar monitor (tepat di atas Taskbar Windows).
+   - Menempel presisi rapat ke Sidebar di sebelah kiri (`md:left-64`) tanpa gap dan memanjang penuh hingga ke batas kanan layar.
+   - Tidak terpengaruh oleh scrolling pada SELURUH HALAMAN (Dashboard, Tasks, Evaluations, Divisions, KPIs, Users, Activity Logs, Settings).
 
-### A. Opsi Checkbox Khusus Role EMPLOYEE (Staf Operasional - 3 Opsi)
-Bagi akun ber-role **EMPLOYEE**, opsi hak akses khusus manajemen (`users.manage`, `users.delete`, `evaluations.create`, `divisions.manage`) **DIHAPUS DARI CHECKLIST MODAL** untuk menjaga kejelasan peran:
-1. 📝 **`tasks.create (Buat Tugas)`**: Memberikan hak bagi pegawai untuk membuat & assign tugas baru (`+ Assign New Task`).
-2. 📤 **`tasks.submit (Submit Bukti)`**: Memberikan hak mengumpulkan dokumen / link bukti pekerjaan (`[ Kumpulkan Bukti ]`).
-3. 🔍 **`tasks.review (Review Atasan)`**: Memberikan hak peninjau (*Reviewer*) untuk menyetujui / meminta revisi tugas (`[ 👁️ Review & Berkas ]`).
-
-### B. Opsi Checkbox Khusus Role MANAGER (Atasan Operasional - 5 Opsi)
-Bagi akun ber-role **MANAGER**, modal menampilkan 5 opsi khusus:
-1. 📝 **`tasks.create (Buat Tugas)`**: Aktif secara bawaan.
-2. 📤 **`tasks.submit (Submit Bukti)`**: Aktif secara bawaan.
-3. 🔍 **`tasks.review (Review Atasan)`**: Aktif secara bawaan.
-4. 📊 **`evaluations.create (Evaluasi)`**: Dapat dicentang oleh Admin untuk memberikan hak pembuatan evaluasi KPI.
-5. 🗑️ **`users.delete (Hapus Karyawan)`**: Dapat dicentang oleh Admin untuk mengaktifkan tombol tempat sampah (`Trash2`) & menu `/users`.
-
-### C. Opsi Checkbox Khusus Role ADMIN & Proteksi Keamanan (Admin Locked)
-1. Bagi akun ber-role **ADMIN**, seluruh 7 opsi checklist manajemen tersedia lengkap (`tasks.create`, `tasks.submit`, `tasks.review`, `users.manage`, `users.delete`, `evaluations.create`, `divisions.manage`).
-2. 🔒 **Proteksi Keamanan Role Admin**: Pada tabel `/users`, akun Super Admin (`Admin System`) secara otomatis diproteksi dengan badge **`🔒 Admin Terkunci`**. Tombol Edit Hak Akses & Hapus User disembunyikan untuk mencegah perubahan hak akses Super Admin secara tidak sengaja.
-3. Pada modal Edit Hak Akses, pilihan role pill disajikan untuk `MANAGER` dan `EMPLOYEE` guna menjaga integritas struktur RBAC.
+2. 🌿 **Brand Identity**:
+   - Menyajikan logo **Green Central Saga**, label **`v2.0 Official`**, hak cipta **`© 2026 Central Saga Inc. SIM-KAP`**, serta indikator **`🟢 Server PostgreSQL 16.2 Active`**.
 
 ---
 
-## 📋 6. Matriks Status Tugas & SOP Pengumpulan
+## 🔄 7. Panduan Alur Pengujian Fitur Lengkap (SOP Step-by-Step)
 
-Alur resmi siklus pengerjaan tugas di Central Saga:
-
-| Status | Makna Status | Pengubah Status | Aksi Tampilan Karyawan | Aksi Tampilan Atasan |
-|:---|:---|:---|:---|:---|
-| **`PENDING`** | Tugas baru dibuat, belum mulai dikerjakan | Manager / Admin | `[ Mulai Kerja ]` | `[ Quick Status Selector ]` |
-| **`IN_PROGRESS`** | Tugas sedang aktif dikerjakan oleh pegawai | Employee / Manager | `[ Kumpulkan Bukti ]` | `[ Review & Berkas ]` |
-| **`SUBMITTED`** | Bukti kerja (file/link Drive) telah diunggah | Employee | `[ 👁️ Detail ]` | `[ 👁️ Review & Berkas ]` |
-| **`APPROVED`** | Bukti kerja disetujui oleh Atasan | Manager / Admin | `[ 👁️ Detail ]` | `[ Approved ✓ ]` |
-| **`REVISION`** | Bukti kerja perlu diperbaiki kembali | Manager / Admin | `[ 🔄 Perbaiki & Ajukan ]` | `[ 👁️ Review & Berkas ]` |
-| **`REJECTED`** | Pekerjaan ditolak oleh Atasan | Manager / Admin | `[ 🔄 Perbaiki & Ajukan ]` | `[ Quick Status Selector ]` |
-
----
-
-## 🚀 7. Fitur Unggulan Sistem
-
-1. **Detail & Live Document Viewer Modal (`TaskDetailModal`)**:
-   * Menampilkan rincian tugas, bobot skor (1–10), nama pegawai & NIP, timestamp upload (`20 Ags 2026, 09:54 WIB`), jenis dokumen (PDF, Word, Excel, ZIP, Link Drive), serta tombol **`[ 🔗 Buka & Lihat Berkas Dokumen Langsung ]`**.
-
-2. **Filter Tampilan Karyawan (`Tugas Saya` vs `Tugas Tim`)**:
-   * Karyawan dapat beralih antara **`[ 👤 Tugas Saya Saja ]`** dan **`[ 👥 Semua Tugas Tim ]`**.
-   * Tugas rekan tim lain diproteksi secara otomatis dengan badge **`🔒 Tugas Rekan Tim`**.
-
-3. **Manajemen Hapus Karyawan & Delegasi RBAC (`users.delete`)**:
-   * Admin memiliki wewenang penuh untuk menghapus data akun karyawan secara real-time via tombol sampah (`Trash2`).
-   * Admin juga dapat mendelegasikan izin `users.delete` kepada Manager tertentu melalui modal **Edit Hak Akses Spatie RBAC**.
-
-4. **Desain Eksekutif Mewah & Garis Tabel Tegas (`Executive UI System`)**:
-   * Seluruh tabel dilapisi **Header Gradasi Navy (`from-slate-900 via-blue-950 to-slate-900 text-white`)**, kolom **`NO.`** (`01`, `02`, `03`), garis pembatas sel tegas 1px (`border-r border-slate-300` & `divide-y divide-slate-300`), bar pencarian melayang tunggal (*Sleek Floating Toolbar*), serta animasi saklar **Sliding Pill 300ms**.
-
----
-
-## 🔄 8. Panduan Alur Pengujian (Step-by-Step)
-
-1. **Langkah 1 (Admin)**:
+1. **Langkah 1 (Nonaktifkan User oleh Admin)**:
    * Login `admin@gmail.com` / `password`.
-   * Buka `/users` ➔ Klik **Edit Hak Akses** pada Sarah Jenkins ➔ Centang **`tasks.create`** ➔ Klik **Simpan Hak Akses**.
+   * Buka `/users` ➔ Klik **`[ ⛔ Nonaktifkan ]`** pada pengguna (misal: `Michael Ross`).
+   * Perhatikan status akun berubah menjadi **`🔴 NON-AKTIF`**.
 
-2. **Langkah 2 (Employee dengan Custom Permission)**:
-   * Logout, lalu login `sarah@gmail.com` / `password`.
-   * Buka `/tasks` ➔ Tombol **`+ Assign New Task`** di kanan atas aktif dan bisa digunakan!
-   * Klik **`[ 👤 Tugas Saya Saja ]`** ➔ Klik judul tugas untuk membuka modal detail dokumen.
+2. **Langkah 2 (Pengujian Blokir Login)**:
+   * Logout dari sistem.
+   * Coba login dengan `michael@gmail.com` / `password` ➔ Akses login ditolak dengan notifikasi *"Akun Anda telah dinonaktifkan oleh Administrator"*.
 
-3. **Langkah 3 (Resubmission Status Rejected / Revision)**:
-   * Pada tugas berstatus `REJECTED` atau `REVISION`, klik **`[ 🔄 Perbaiki & Ajukan Ulang ]`**.
-   * Unggah file/link baru ➔ Status otomatis diperbarui menjadi **`SUBMITTED`**.
+3. **Langkah 3 (Pemindahan Tugas oleh Manager / Admin)**:
+   * Login kembali sebagai `manager@gmail.com` / `password` atau `admin@gmail.com` / `password`.
+   * Buka menu `/tasks` ➔ Cari tugas yang sebelumnya dimiliki `Michael Ross` (status otomatis `PENDING`).
+   * Klik **`[ 🔄 Pindahkan ]`** ➔ Pilih Karyawan Aktif baru (misal: `Sarah Jenkins`) ➔ Klik **Konfirmasi Pindahkan Tugas**.
+   * Tugas berhasil dialihkan ke `Sarah Jenkins` dengan status `IN_PROGRESS`!
+
+4. **Langkah 4 (Reset Password Mandiri)**:
+   * Buka halaman `/reset-password`.
+   * Masukkan email `sarah@gmail.com` ➔ Masukkan OTP konfirmasi yang dikirimkan ke email testing `putra.timur804@gmail.com` ➔ Set password baru.
+   * Login dengan password baru berhasil!
+
+---
+
+## 📜 8. Sistem Log Aktivitas Real-Time & Lencana Unread Notifikasi Sidebar (`Log Aktivitas Counter`)
+
+Sistem **Central Saga** mencatat seluruh jejak aktivitas pengguna (*Audit Trail*) secara otomatis dan real-time:
+
+1. **Pencatatan Otomatis Aktivitas Seluruh User & Role**:
+   - **Perubahan RBAC / Role**: `SPATIE_RBAC_UPDATED` (Perubahan izin atau status role user oleh Admin).
+   - **Status User**: `USER_DEACTIVATED` / `USER_ACTIVATED` (Penonaktifan atau pengaktifan akun karyawan).
+   - **Manajemen Tugas**: `TASK_CREATED` (Pembuatan tugas baru), `PROOF_SUBMITTED` (Pengunggahan bukti penyelesaian tugas), `TASK_REVIEWED` (Review persetujuan / revisi atasan), `TASK_REASSIGNED` (Pemindahan tugas pegawai non-aktif).
+   - **Aktivitas Akun**: `USER_LOGIN` (Masuk sistem) & `PASSWORD_RESET` (Reset password).
+
+2. **Lencana Unread Notifikasi Real-Time di Sidebar (`Sidebar Badge Counter`)**:
+   - Pada item menu **Log Aktivitas** di Sidebar navigasi sebelah kiri, tampil lencana angka notifikasi unread.
+   - Angka lencana ini **menunjukkan jumlah log baru yang belum dibaca**.
+   - Saat menu **Log Aktivitas** diklik/dibuka, angka di Sidebar hilang (menjadi 0) dan penanda `✨ TERBARU` di tabel hilang otomatis setelah 5 detik!
+

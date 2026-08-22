@@ -38,6 +38,14 @@ export const authService = {
         }
       }
 
+      // Check if user status is INACTIVE
+      if (typeof window !== "undefined") {
+        const savedStatus = localStorage.getItem(`simkap_user_status_${cleanEmail}`);
+        if (savedStatus === "INACTIVE") {
+          throw new Error("Akun Anda telah dinonaktifkan oleh Administrator. Akses login ditolak.");
+        }
+      }
+
       // Strict credential check per role
       if (cleanPassword !== expectedPassword) {
         throw new Error("Gagal Masuk: Kombinasi email atau password salah (401 Unauthorized).");

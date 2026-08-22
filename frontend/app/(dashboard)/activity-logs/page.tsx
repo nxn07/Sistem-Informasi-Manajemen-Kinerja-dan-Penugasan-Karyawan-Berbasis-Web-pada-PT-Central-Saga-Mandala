@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Footer from "@/components/shared/Footer";
 import { auditLogService } from "@/services/audit-log-service";
 import { ActivityLog } from "@/types/api";
 import { Search, History, Sparkles, Clock } from "lucide-react";
@@ -26,12 +27,16 @@ export default function ActivityLogsPage() {
       if (isFirstLoadRef.current) {
         setLoading(true);
       }
+      const lastRead = auditLogService.getLastReadTime();
       const rawData = await auditLogService.getAll();
       const mapped: AuditDisplayItem[] = rawData.map((l: ActivityLog, idx: number) => {
         const userName = l.causer?.name || l.causer?.email || "System Admin";
         const dateStr = l.created_at ? new Date(l.created_at).toLocaleString("id-ID") : "19 Ags 2026, 18:15:00";
         const desc = l.description || "Aktivitas audit diproses";
         const modName = l.subject_type ? l.subject_type.split("\\").pop() || "System" : "Audit Module";
+        const itemTime = l.created_at ? new Date(l.created_at).getTime() : 0;
+
+        const isLogNew = lastRead > 0 ? itemTime > lastRead : idx === 0;
 
         return {
           id: l.id,
@@ -40,8 +45,7 @@ export default function ActivityLogsPage() {
           action: l.log_name || "LOGGED",
           module: modName,
           details: desc,
-          // The top-most (most recent) log entry ALWAYS keeps 'isNew: true' until a newer log arrives!
-          isNew: idx === 0,
+          isNew: isLogNew,
         };
       });
 
@@ -58,15 +62,19 @@ export default function ActivityLogsPage() {
 
   useEffect(() => {
     loadAuditLogs();
-    // Mark sidebar badge counter as read upon visiting page
-    auditLogService.markAsRead();
 
-    // Auto-refresh audit logs every 2 seconds in real-time silently
+    // Mark as read after EXACTLY 5 SECONDS (5000ms) of viewing the page
+    const readTimer = setTimeout(() => {
+      auditLogService.markAsRead();
+      setLogs((prev) => prev.map((l) => ({ ...l, isNew: false })));
+    }, 5000);
+
     const interval = setInterval(() => {
       loadAuditLogs();
-    }, 2000);
+    }, 3000);
 
     return () => {
+      clearTimeout(readTimer);
       clearInterval(interval);
     };
   }, []);
@@ -85,7 +93,7 @@ export default function ActivityLogsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <span>Audit Log Aktivitas Sistem Central Saga</span>
+            <span>Log Aktivitas Sistem Central Saga</span>
             <History className="w-6 h-6 text-blue-600 inline-block" />
           </h1>
           <p className="text-xs text-slate-500 mt-0.5 font-medium">
@@ -157,8 +165,8 @@ export default function ActivityLogsPage() {
                         {l.timestamp}
                       </span>
                       {l.isNew && (
-                        <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-blue-600 text-white shadow-2xs animate-pulse shrink-0">
-                          ✨ BARU
+                        <span className="px-2.5 py-0.5 text-[10px] font-black rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-2xs animate-pulse shrink-0 border border-blue-400/40">
+                          ✨ TERBARU
                         </span>
                       )}
                     </div>
