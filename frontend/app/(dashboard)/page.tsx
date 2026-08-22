@@ -118,7 +118,7 @@ export default function DashboardOverviewPage() {
 
       {/* 4 Stat Metric Cards (EXACT IMAGE 1 EXECUTIVE 3D CARDS & CRISP BORDERS) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-blue-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+        <div className="p-6 bg-white border border-slate-300 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-blue-500 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
           <div className="absolute top-0 right-0 w-28 h-28 bg-blue-500/5 rounded-full blur-xl group-hover:bg-blue-500/10 transition-all pointer-events-none" />
           <div>
             <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs uppercase tracking-wider">
@@ -134,7 +134,7 @@ export default function DashboardOverviewPage() {
           </div>
         </div>
 
-        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-purple-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+        <div className="p-6 bg-white border border-slate-300 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-purple-500 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
           <div className="absolute top-0 right-0 w-28 h-28 bg-purple-500/5 rounded-full blur-xl group-hover:bg-purple-500/10 transition-all pointer-events-none" />
           <div>
             <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs uppercase tracking-wider">
@@ -150,7 +150,7 @@ export default function DashboardOverviewPage() {
           </div>
         </div>
 
-        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-emerald-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+        <div className="p-6 bg-white border border-slate-300 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-emerald-500 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
           <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition-all pointer-events-none" />
           <div>
             <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs uppercase tracking-wider">
@@ -168,7 +168,7 @@ export default function DashboardOverviewPage() {
           </div>
         </div>
 
-        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-amber-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+        <div className="p-6 bg-white border border-slate-300 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-amber-500 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
           <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full blur-xl group-hover:bg-amber-500/10 transition-all pointer-events-none" />
           <div>
             <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-xs uppercase tracking-wider">

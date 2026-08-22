@@ -573,7 +573,7 @@ export default function TasksPage() {
 
       {/* Metrics Banner (ULTRA-AESTHETIC EXECUTIVE CARDS) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-slate-400 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+        <div className="p-6 bg-white border border-slate-300 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-slate-400 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
           <div className="absolute top-0 right-0 w-28 h-28 bg-slate-500/5 rounded-full blur-xl group-hover:bg-slate-500/10 transition-all pointer-events-none" />
           <div>
             <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs uppercase tracking-wider">
@@ -589,7 +589,7 @@ export default function TasksPage() {
           </div>
         </div>
 
-        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-blue-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+        <div className="p-6 bg-white border border-slate-300 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-blue-500 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
           <div className="absolute top-0 right-0 w-28 h-28 bg-blue-500/5 rounded-full blur-xl group-hover:bg-blue-500/10 transition-all pointer-events-none" />
           <div>
             <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs uppercase tracking-wider">
@@ -605,7 +605,7 @@ export default function TasksPage() {
           </div>
         </div>
 
-        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-purple-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+        <div className="p-6 bg-white border border-slate-300 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-purple-500 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
           <div className="absolute top-0 right-0 w-28 h-28 bg-purple-500/5 rounded-full blur-xl group-hover:bg-purple-500/10 transition-all pointer-events-none" />
           <div>
             <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-xs uppercase tracking-wider">
@@ -621,7 +621,7 @@ export default function TasksPage() {
           </div>
         </div>
 
-        <div className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-emerald-500/80 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
+        <div className="p-6 bg-white border border-slate-300 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-emerald-500 transition-all duration-300 flex items-center justify-between group relative overflow-hidden cursor-pointer">
           <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition-all pointer-events-none" />
           <div>
             <span className="px-3 py-1 text-[10px] font-black rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs uppercase tracking-wider">

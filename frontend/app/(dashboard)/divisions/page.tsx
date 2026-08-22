@@ -184,7 +184,7 @@ export default function DivisionsPage() {
         {filtered.map((item) => (
           <div
             key={item.id}
-            className="p-6 bg-white border border-slate-200/90 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-blue-500/80 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden"
+            className="p-6 bg-white border border-slate-300 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1.5 hover:border-blue-500 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden"
           >
             {/* Ambient Background Sheen */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all pointer-events-none" />

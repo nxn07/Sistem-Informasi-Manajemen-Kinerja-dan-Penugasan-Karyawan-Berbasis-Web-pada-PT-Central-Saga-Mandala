@@ -10,6 +10,8 @@ import { userService } from "@/services/user-service";
 import { User } from "@/types/api";
 import { Loader2 } from "lucide-react";
 
+const todayStr = new Date().toISOString().split("T")[0];
+
 const createTaskSchema = z.object({
   title: z.string().min(3, "Judul tugas minimal 3 karakter"),
   description: z.string().optional(),
@@ -20,7 +22,17 @@ const createTaskSchema = z.object({
   assigned_employee_id: z.coerce
     .number()
     .min(1, "Pilih pegawai penanggung jawab"),
-  deadline: z.string().min(1, "Batas waktu (deadline) wajib diisi"),
+  start_date: z.string().optional(),
+  deadline: z
+    .string()
+    .min(1, "Batas waktu (deadline) wajib diisi")
+    .refine((val) => {
+      if (!val) return false;
+      const selected = new Date(val);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return selected >= today;
+    }, "Tanggal deadline tidak boleh sebelum hari ini!"),
 });
 
 type CreateTaskFormData = z.infer<typeof createTaskSchema>;
@@ -45,6 +57,7 @@ export function CreateTaskModal({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<CreateTaskFormData>({
     resolver: zodResolver(createTaskSchema) as any,
@@ -53,9 +66,13 @@ export function CreateTaskModal({
       description: "",
       weight: 1,
       assigned_employee_id: undefined,
+      start_date: todayStr,
       deadline: "",
     },
   });
+
+  const startDateVal = watch("start_date");
+  const minDeadlineStr = startDateVal && startDateVal > todayStr ? startDateVal : todayStr;
 
   useEffect(() => {
     if (isOpen) {
@@ -194,18 +211,33 @@ export function CreateTaskModal({
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Batas Waktu (Deadline) <span className="text-rose-500">*</span>
-          </label>
-          <input
-            type="date"
-            {...register("deadline")}
-            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
-          />
-          {errors.deadline && (
-            <p className="mt-1 text-xs text-rose-500">{errors.deadline.message}</p>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Tanggal Mulai (Start Date)
+            </label>
+            <input
+              type="date"
+              min={todayStr}
+              {...register("start_date")}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Batas Waktu (Deadline) <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="date"
+              min={minDeadlineStr}
+              {...register("deadline")}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+            />
+            {errors.deadline && (
+              <p className="mt-1 text-xs font-bold text-rose-500">{errors.deadline.message}</p>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">

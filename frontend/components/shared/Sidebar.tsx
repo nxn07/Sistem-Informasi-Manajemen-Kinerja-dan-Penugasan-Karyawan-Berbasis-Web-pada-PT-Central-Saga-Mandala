@@ -59,11 +59,6 @@ export default function Sidebar() {
   useEffect(() => {
     const updateCount = async () => {
       try {
-        if (pathname === "/activity-logs") {
-          auditLogService.markAsRead();
-          setLogCount(0);
-          return;
-        }
         const count = await auditLogService.getUnreadCount();
         setLogCount(count);
       } catch {
@@ -82,7 +77,7 @@ export default function Sidebar() {
       window.removeEventListener("storage", handleAuditUpdate);
       clearInterval(interval);
     };
-  }, [pathname]);
+  }, []);
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-100 h-screen sticky top-0 overflow-y-auto flex flex-col justify-between p-4 shrink-0 border-r border-slate-800 z-40">

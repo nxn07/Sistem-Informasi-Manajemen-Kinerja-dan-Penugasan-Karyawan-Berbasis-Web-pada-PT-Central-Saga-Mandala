@@ -146,11 +146,10 @@ export default function ActivityLogsPage() {
               {filteredLogs.map((l, idx) => (
                 <tr
                   key={l.id}
-                  className={`transition-all duration-150 cursor-pointer group ${
-                    l.isNew
+                  className={`transition-all duration-150 cursor-pointer group ${l.isNew
                       ? "bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-white border-l-4 border-l-blue-600 font-bold"
                       : "even:bg-slate-50/70 hover:bg-blue-50/50"
-                  }`}
+                    }`}
                 >
                   {/* NO. Column */}
                   <td className="py-4.5 px-4 text-slate-400 font-bold border-r border-slate-200 text-center">

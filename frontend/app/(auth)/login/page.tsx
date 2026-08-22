@@ -5,7 +5,25 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { authService } from "@/services/auth-service";
 import { Toast } from "@/components/ui/Toast";
-import { Mail, Lock, Loader2, KeyRound, CheckCircle2, X } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  Loader2,
+  KeyRound,
+  CheckCircle2,
+  X,
+  Shield,
+  Briefcase,
+  UserCheck,
+  Zap,
+  History,
+  Database,
+  ArrowRight,
+  Sparkles,
+  Server,
+  Building2,
+  Check,
+} from "lucide-react";
 import centralSagaLogo from "@/public/central-saga-logo.png";
 
 export default function LoginPage() {
@@ -19,6 +37,7 @@ export default function LoginPage() {
   const [isForgotOpen, setIsForgotOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -32,11 +51,14 @@ export default function LoginPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedRemember = localStorage.getItem("simkap_remember_me");
-      if (savedRemember === "true") {
-        const savedEmail = localStorage.getItem("simkap_remember_email");
-        const savedPassword = localStorage.getItem("simkap_remember_password");
-        if (savedEmail) setEmail(savedEmail);
+      const savedEmail = localStorage.getItem("simkap_remember_email");
+      const savedPassword = localStorage.getItem("simkap_remember_password");
+
+      if (savedRemember === "true" && savedEmail) {
+        setEmail(savedEmail);
         if (savedPassword) setPassword(savedPassword);
+        setRememberMe(true);
+      } else {
         setRememberMe(true);
       }
     }
@@ -57,7 +79,7 @@ export default function LoginPage() {
           localStorage.setItem("simkap_remember_email", email);
           localStorage.setItem("simkap_remember_password", password);
         } else {
-          localStorage.removeItem("simkap_remember_me");
+          localStorage.setItem("simkap_remember_me", "false");
           localStorage.removeItem("simkap_remember_email");
           localStorage.removeItem("simkap_remember_password");
         }
@@ -69,7 +91,7 @@ export default function LoginPage() {
       });
       setTimeout(() => {
         router.push("/");
-      }, 800);
+      }, 700);
     } catch (err: any) {
       setToast({
         type: "error",
@@ -83,8 +105,6 @@ export default function LoginPage() {
     }
   };
 
-  const [resetSent, setResetSent] = useState(false);
-
   const handleResetPasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setResetLoading(true);
@@ -95,270 +115,333 @@ export default function LoginPage() {
       setResetSent(true);
       setToast({
         type: "success",
-        message: `Link Reset Password Berhasil Dikirim ke Email '${targetEmail}'! Silakan klik tombol di bawah untuk membuat password baru.`,
+        message: `Link Reset Password Berhasil Dikirim ke Email '${targetEmail}'! Silakan ikuti instruksi pemulihan.`,
       });
     }, 600);
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Subtle Grid Effect */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-60" />
+  // Quick Credential Selector Helper
+  const fillCredentials = (roleEmail: string) => {
+    setEmail(roleEmail);
+    setPassword("password");
+  };
 
-      {/* Floating Success / Error Toast Popup */}
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans">
+      {/* Dynamic Background Glow & Grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
+      <div className="absolute top-1/4 left-1/12 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/12 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Toast Notification Popup */}
       <Toast
         type={toast.type}
         message={toast.message}
         onClose={() => setToast({ ...toast, message: null })}
       />
 
-      <div className="max-w-md w-full bg-white/95 backdrop-blur-xl rounded-[2.5rem] p-9 relative z-10 border border-slate-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.14),0_0_35px_rgba(16,185,129,0.12)] hover:shadow-[0_25px_60px_rgba(0,0,0,0.18),0_0_45px_rgba(16,185,129,0.18)] transition-all duration-300 space-y-6">
-        {/* Brand Header with Official Central Saga Green Logo & Name */}
-        <div className="text-center">
-          <div className="w-20 h-20 rounded-3xl bg-white p-3.5 flex items-center justify-center border-2 border-emerald-500/40 mx-auto mb-4 shadow-xl shadow-emerald-500/15 ring-4 ring-emerald-500/10 hover:scale-105 hover:shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300">
-            <Image src={centralSagaLogo} alt="Central Saga" className="w-full h-full object-contain drop-shadow-xs" />
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Central Saga
-          </h1>
-          <p className="text-xs font-extrabold text-emerald-600 uppercase tracking-widest mt-0.5">
-            Enterprise Performance
-          </p>
-          <p className="text-xs text-slate-500 font-medium mt-1">
-            Sistem Informasi Kinerja & Audit Pegawai (SIM-KAP)
-          </p>
-        </div>
-
-        {/* Clean Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Email / Username
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
-              <input
-                type="email"
-                required
-                suppressHydrationWarning
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@gmail.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all"
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">
-                Password
-              </label>
-            </div>
-            <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
-              <input
-                type="password"
-                required
-                suppressHydrationWarning
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all"
-              />
-            </div>
-          </div>
-
-          {/* Remember Me Checkbox & Lupa Password Link */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="remember"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <label htmlFor="remember" className="text-xs text-slate-700 font-bold cursor-pointer select-none">
-                Remember Me
-              </label>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setResetEmail(email || "admin@gmail.com");
-                setIsForgotOpen(true);
-              }}
-              className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
-            >
-              Lupa Password?
-            </button>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-blue-900 hover:bg-blue-950 active:scale-98 text-white font-extrabold rounded-xl text-xs flex items-center justify-center transition-all shadow-md disabled:opacity-50 cursor-pointer mt-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                <span>Memproses Autentikasi...</span>
-              </>
-            ) : (
-              <span>Masuk ke Dashboard</span>
-            )}
-          </button>
-        </form>
-      </div>
-
-      {/* Modal Popup: Lupa Password & Kirim Link Reset Email */}
-      {isForgotOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 relative">
-            <button
-              onClick={() => {
-                setIsForgotOpen(false);
-                setResetSent(false);
-              }}
-              className="absolute right-5 top-5 text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl border border-blue-200">
-                <KeyRound className="w-5 h-5" />
+      {/* Main Landing & Login Container */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 relative z-10 max-w-7xl mx-auto w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center w-full">
+          
+          {/* LEFT 7 COLS: EXECUTIVE LANDING PAGE HERO SECTION */}
+          <div className="lg:col-span-7 space-y-8 pr-0 lg:pr-6">
+            
+            {/* Official Logo Header Badge */}
+            <div className="inline-flex items-center gap-3 p-2 pr-4 bg-slate-900/90 border border-emerald-500/40 rounded-full shadow-lg shadow-emerald-500/10 backdrop-blur-md">
+              <div className="w-9 h-9 rounded-full bg-white p-1 flex items-center justify-center shrink-0 border border-emerald-500/50">
+                <Image src={centralSagaLogo} alt="Central Saga Logo" className="w-full h-full object-contain" />
               </div>
-              <div>
-                <h3 className="font-black text-slate-900 text-base">
-                  Pemulihan Lupa Password
-                </h3>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Kirim link token reset password ke email pegawai / manager
+              <div className="flex items-center gap-2 text-xs font-black">
+                <span className="text-emerald-400">CENTRAL SAGA INC.</span>
+                <span className="text-slate-600">•</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] uppercase font-bold border border-emerald-500/30">
+                  v2.0 Official SIM-KAP
+                </span>
+              </div>
+            </div>
+
+            {/* Hero Main Headline */}
+            <div className="space-y-3">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
+                Sistem Informasi Kinerja & Audit Pegawai{" "}
+                <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-blue-400 bg-clip-text text-transparent">
+                  Enterprise
+                </span>
+              </h1>
+              <p className="text-sm sm:text-base text-slate-300 font-medium leading-relaxed max-w-2xl">
+                Platform terpadu untuk manajemen penugasan karyawan, evaluasi kriteria KPI, 
+                pemindahan tugas pegawai non-aktif, dan pencatatan audit aktivitas real-time di lingkungan Central Saga.
+              </p>
+            </div>
+
+            {/* Landing Page Feature Highlights (2x2 Grid) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-2 backdrop-blur-md hover:border-emerald-500/50 transition-all duration-300 group">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <h4 className="font-extrabold text-sm text-white">Task Monitoring Real-Time</h4>
+                <p className="text-xs text-slate-400 font-medium leading-normal">
+                  Alokasi tugas karyawan, pengunggahan bukti kerja, serta SOP pemindahan tugas pegawai non-aktif.
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-2 backdrop-blur-md hover:border-blue-500/50 transition-all duration-300 group">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <h4 className="font-extrabold text-sm text-white">Spatie RBAC Access Control</h4>
+                <p className="text-xs text-slate-400 font-medium leading-normal">
+                  Sistem izin terproteksi penuh untuk Administrator System, Manager Utama, dan Karyawan.
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-2 backdrop-blur-md hover:border-indigo-500/50 transition-all duration-300 group">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                  <History className="w-5 h-5" />
+                </div>
+                <h4 className="font-extrabold text-sm text-white">Log Aktivitas Real-Time</h4>
+                <p className="text-xs text-slate-400 font-medium leading-normal">
+                  Pencatatan otomatis seluruh jejak aktivitas pengguna dengan lencana unread & pewaktu 5 detik.
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-2 backdrop-blur-md hover:border-teal-500/50 transition-all duration-300 group">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                  <Database className="w-5 h-5" />
+                </div>
+                <h4 className="font-extrabold text-sm text-white">PostgreSQL 16 & Recycle Bin</h4>
+                <p className="text-xs text-slate-400 font-medium leading-normal">
+                  Pencadangan database otomatis (.sql) serta pemulihan (*recovery*) tugas dari Tempat Sampah.
                 </p>
               </div>
             </div>
 
-            {!resetSent ? (
-              <form onSubmit={handleResetPasswordSubmit} className="space-y-4 text-xs">
+            {/* System Status Badges Footer */}
+            <div className="pt-4 border-t border-slate-800/80 flex flex-wrap items-center gap-4 text-xs font-bold text-slate-400">
+              <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                PostgreSQL 16.2 Engine Active
+              </span>
+              <span className="flex items-center gap-1 text-slate-400">
+                <Shield className="w-3.5 h-3.5 text-blue-400" /> SSL 256-Bit Encrypted
+              </span>
+            </div>
+          </div>
+
+          {/* RIGHT 5 COLS: LOGIN FORM PORTAL (GLASSMORPHISM ELEGAN CARD) */}
+          <div className="lg:col-span-5">
+            <div className="bg-white/95 text-slate-900 rounded-[2.5rem] p-8 md:p-9 border border-slate-200 shadow-[0_25px_60px_rgba(0,0,0,0.35),0_0_40px_rgba(16,185,129,0.15)] space-y-6 relative">
+              
+              {/* Form Header with Logo */}
+              <div className="text-center space-y-2">
+                <div className="w-20 h-20 rounded-3xl bg-white p-3 flex items-center justify-center border-2 border-emerald-500/40 mx-auto shadow-xl shadow-emerald-500/15 ring-4 ring-emerald-500/10">
+                  <Image src={centralSagaLogo} alt="Central Saga Logo" className="w-full h-full object-contain drop-shadow-xs" />
+                </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">
-                    Masukkan Email Pegawai / Manager / Admin
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Central Saga</h2>
+                  <p className="text-[11px] font-extrabold text-emerald-600 uppercase tracking-widest">
+                    Portal Masuk SIM-KAP
+                  </p>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    Masukkan email & password akun Anda untuk masuk sistem.
+                  </p>
+                </div>
+              </div>
+
+              {/* Login Form Inputs */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Email Login Akun
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
                     <input
                       type="email"
                       required
-                      value={resetEmail || "putra.timur804@gmail.com"}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      placeholder="putra.timur804@gmail.com"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="email@centralsaga.com"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all shadow-2xs"
                     />
                   </div>
                 </div>
 
-                {/* Quick Select Buttons for Target Emails */}
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
-                  <p className="text-[11px] font-bold text-slate-500">Target Email Uji Coba Pemulihan:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setResetEmail("putra.timur804@gmail.com")}
-                      className="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-900 text-[11px] font-bold rounded-lg border border-blue-200 shadow-2xs cursor-pointer"
-                    >
-                      📧 putra.timur804@gmail.com (Default Uji Coba)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setResetEmail("admin@gmail.com")}
-                      className="px-2.5 py-1 bg-white hover:bg-blue-50 text-slate-800 text-[11px] font-bold rounded-lg border border-slate-200 shadow-2xs cursor-pointer"
-                    >
-                      👑 admin@gmail.com
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setResetEmail("sarah@gmail.com")}
-                      className="px-2.5 py-1 bg-white hover:bg-blue-50 text-slate-800 text-[11px] font-bold rounded-lg border border-slate-200 shadow-2xs cursor-pointer"
-                    >
-                      👤 sarah@gmail.com
-                    </button>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Password
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all shadow-2xs"
+                    />
                   </div>
                 </div>
 
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-[11px] text-blue-900 font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>Sistem akan mengirim link tautan reset password unik ke email <strong>'{resetEmail || "putra.timur804@gmail.com"}'</strong>.</span>
+                {/* Remember Me Checkbox & Reset Password Link */}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="remember"
+                      checked={rememberMe}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setRememberMe(isChecked);
+                        if (typeof window !== "undefined" && !isChecked) {
+                          localStorage.setItem("simkap_remember_me", "false");
+                          localStorage.removeItem("simkap_remember_email");
+                          localStorage.removeItem("simkap_remember_password");
+                        }
+                      }}
+                      className="w-4 h-4 accent-blue-600 border-slate-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="remember" className="text-xs text-slate-700 font-bold cursor-pointer select-none">
+                      Ingat Saya (Remember)
+                    </label>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetEmail(email || "admin@gmail.com");
+                      setIsForgotOpen(true);
+                    }}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                  >
+                    Lupa Password?
+                  </button>
                 </div>
 
-                <div className="pt-2 flex items-center justify-end gap-2">
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 px-4 bg-slate-900 hover:bg-blue-600 active:scale-98 text-white rounded-xl text-xs font-extrabold transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2 border border-slate-900"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Mengautentikasi Sesi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Masuk Sistem Central Saga</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Landing Page Footer */}
+      <footer className="py-4 px-6 border-t border-slate-800 text-center text-xs text-slate-500 font-medium relative z-10">
+        <p>© 2026 Central Saga Inc. Sistem Informasi Kinerja & Audit Pegawai (SIM-KAP v2.0 Official)</p>
+      </footer>
+
+      {/* Lupa Password Modal */}
+      {isForgotOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5 text-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 shadow-2xs">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    Lupa Password Akun
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium">
+                    Kirim link/OTP pemulihan kata sandi.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsForgotOpen(false);
+                  setResetSent(false);
+                }}
+                className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {!resetSent ? (
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-4 text-xs font-medium">
+                <p className="text-slate-600">
+                  Masukkan email akun Anda. Kode OTP/link pembuatan password baru akan dikirimkan ke email target testing (<strong>putra.timur804@gmail.com</strong>).
+                </p>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1.5">
+                    Email Akun Anda:
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="sarah@gmail.com"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
                   <button
                     type="button"
                     onClick={() => setIsForgotOpen(false)}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all cursor-pointer"
+                    className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 cursor-pointer"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white font-extrabold rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                    className="px-5 py-2 bg-blue-900 hover:bg-blue-950 text-white font-extrabold rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
                   >
-                    {resetLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Mengirim Email...</span>
-                      </>
-                    ) : (
-                      <span>Kirim Link Reset Password</span>
-                    )}
+                    {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Kirim Link Reset"}
                   </button>
                 </div>
               </form>
             ) : (
-              /* Success Email Sent Banner & Direct Link Button */
-              <div className="space-y-4 text-xs">
-                <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl text-emerald-900 space-y-2 shadow-2xs">
-                  <div className="flex items-center gap-2 font-black text-sm text-emerald-800">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <span>Link Reset Berhasil Terkirim!</span>
-                  </div>
-                  <p className="font-semibold text-xs leading-relaxed">
-                    Sistem telah mensimulasikan pengiriman link reset password ke email:
-                    <br />
-                    <strong className="text-emerald-950 font-black text-sm">{resetEmail || "putra.timur804@gmail.com"}</strong>
-                  </p>
-                  <p className="text-[11px] text-emerald-700 font-medium">
-                    Klik tombol di bawah ini untuk membuka tautan reset password dan membuat password baru Anda.
+              <div className="space-y-4 text-center py-2">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-300">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm">OTP / Link Reset Berhasil Dikirim!</h4>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    Link pemulihan telah dikirimkan ke email <strong>putra.timur804@gmail.com</strong>.
                   </p>
                 </div>
-
-                <div className="pt-2 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsForgotOpen(false);
-                      setResetSent(false);
-                      router.push(`/reset-password?email=${encodeURIComponent(resetEmail || "putra.timur804@gmail.com")}&token=reset_token_demo_9921`);
-                    }}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
-                  >
-                    <span>🔗 Buka Link Reset Password Email</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsForgotOpen(false);
-                      setResetSent(false);
-                    }}
-                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
-                  >
-                    Tutup Modal
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotOpen(false);
+                    router.push("/reset-password");
+                  }}
+                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  Buka Halaman Reset Password Sekarang
+                </button>
               </div>
             )}
           </div>
