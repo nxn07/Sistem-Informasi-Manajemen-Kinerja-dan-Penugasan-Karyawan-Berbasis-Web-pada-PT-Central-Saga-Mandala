@@ -4,6 +4,7 @@ import { authService } from "./auth-service";
 
 const LOCAL_AUDIT_KEY = "simkap_audit_logs";
 const READ_TIMESTAMP_KEY = "simkap_last_read_audit_timestamp";
+const CLEARED_FLAG_KEY = "simkap_audit_logs_cleared";
 
 function getFallbackLogs(): ActivityLog[] {
   return [
@@ -79,6 +80,19 @@ export const auditLogService = {
 
       const updated = [newEntry, ...existing];
       localStorage.setItem(LOCAL_AUDIT_KEY, JSON.stringify(updated.slice(0, 100)));
+      localStorage.removeItem(CLEARED_FLAG_KEY);
+      window.dispatchEvent(new Event("simkap_audit_updated"));
+    } catch {
+      // ignore
+    }
+  },
+
+  clearLogs() {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(LOCAL_AUDIT_KEY, JSON.stringify([]));
+      localStorage.setItem(CLEARED_FLAG_KEY, "true");
+      localStorage.setItem(READ_TIMESTAMP_KEY, String(Date.now()));
       window.dispatchEvent(new Event("simkap_audit_updated"));
     } catch {
       // ignore
@@ -135,21 +149,75 @@ export const auditLogService = {
 
   async getAll(): Promise<ActivityLog[]> {
     try {
+      const currentUser = authService.getCurrentUser();
+      const currentRole = (currentUser?.role || currentUser?.roles?.[0] || "ADMIN").toUpperCase();
+      const isManager = currentRole === "MANAGER";
+
+      const isCleared = typeof window !== "undefined" && localStorage.getItem(CLEARED_FLAG_KEY) === "true";
       const localLogs = auditLogService.getLocalLogs();
+      if (isCleared && localLogs.length === 0) {
+        return [];
+      }
+
       const response = await apiClient.get<ApiResponse<ActivityLog[]>>("/activity-logs");
       const serverData = response.data.data || [];
-      const merged = [...localLogs, ...(serverData.length > 0 ? serverData : getFallbackLogs())];
+      const merged = [...localLogs, ...(serverData.length > 0 ? serverData : isCleared ? [] : getFallbackLogs())];
       
       const map = new Map<number, ActivityLog>();
       merged.forEach((item) => map.set(item.id, item));
-      return Array.from(map.values()).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      let results = Array.from(map.values()).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+
+      if (isManager) {
+        results = results.filter((l) => {
+          const causerRole = (l.causer?.role || l.causer?.roles?.[0] || "").toUpperCase();
+          const causerName = (l.causer?.name || "").toLowerCase();
+          const causerEmail = (l.causer?.email || "").toLowerCase();
+          const desc = (l.description || "").toLowerCase();
+          const isAdmin =
+            causerRole === "ADMIN" ||
+            causerName.includes("admin") ||
+            causerEmail === "admin@gmail.com" ||
+            desc.includes("(admin)") ||
+            desc.includes("'admin'");
+          return !isAdmin;
+        });
+      }
+
+      return results;
     } catch {
+      const currentUser = authService.getCurrentUser();
+      const currentRole = (currentUser?.role || currentUser?.roles?.[0] || "ADMIN").toUpperCase();
+      const isManager = currentRole === "MANAGER";
+
+      const isCleared = typeof window !== "undefined" && localStorage.getItem(CLEARED_FLAG_KEY) === "true";
       const localLogs = auditLogService.getLocalLogs();
-      const fallback = getFallbackLogs();
+      if (isCleared && localLogs.length === 0) {
+        return [];
+      }
+
+      const fallback = isCleared ? [] : getFallbackLogs();
       const merged = [...localLogs, ...fallback];
       const map = new Map<number, ActivityLog>();
       merged.forEach((item) => map.set(item.id, item));
-      return Array.from(map.values()).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      let results = Array.from(map.values()).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+
+      if (isManager) {
+        results = results.filter((l) => {
+          const causerRole = (l.causer?.role || l.causer?.roles?.[0] || "").toUpperCase();
+          const causerName = (l.causer?.name || "").toLowerCase();
+          const causerEmail = (l.causer?.email || "").toLowerCase();
+          const desc = (l.description || "").toLowerCase();
+          const isAdmin =
+            causerRole === "ADMIN" ||
+            causerName.includes("admin") ||
+            causerEmail === "admin@gmail.com" ||
+            desc.includes("(admin)") ||
+            desc.includes("'admin'");
+          return !isAdmin;
+        });
+      }
+
+      return results;
     }
   }
 };

@@ -26,9 +26,15 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     const token = Cookies.get('simkap_token');
-    if (error.response?.status === 401 && !token?.startsWith('demo_')) {
-      Cookies.remove('simkap_token');
-      Cookies.remove('simkap_user');
+    const isDemo =
+      !token ||
+      token.startsWith('demo_') ||
+      token.startsWith('token_') ||
+      token.startsWith('mock_');
+
+    if (error.response?.status === 401 && !isDemo) {
+      Cookies.remove('simkap_token', { path: '/' });
+      Cookies.remove('simkap_user', { path: '/' });
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }

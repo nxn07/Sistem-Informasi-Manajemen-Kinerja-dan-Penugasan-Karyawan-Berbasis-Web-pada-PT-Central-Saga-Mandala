@@ -75,13 +75,23 @@ class UserService implements UserServiceInterface
     public function updateUser(int $id, array $data)
     {
         return DB::transaction(function () use ($id, $data) {
+            $user = $this->userRepository->findById($id);
+
             $payload = [];
             if (isset($data['name'])) $payload['name'] = $data['name'];
-            if (isset($data['email'])) $payload['email'] = $data['email'];
+            if (isset($data['email'])) {
+                if ($user->isPrimaryAdmin() && strtolower(trim($data['email'])) !== strtolower(trim($user->email))) {
+                    throw new \Exception("Email Super Admin Utama terlindungi dan tidak dapat diubah.");
+                }
+                $payload['email'] = $data['email'];
+            }
             if (!empty($data['password'])) $payload['password'] = Hash::make($data['password']);
 
             if (isset($data['role'])) {
                 $role = $this->normalizeRoleName($data['role']);
+                if ($user->isPrimaryAdmin() && $role !== 'admin') {
+                    throw new \Exception("Peran (Role) Super Admin Utama tidak dapat diubah.");
+                }
                 $payload['role'] = strtoupper($role);
             }
 
@@ -98,6 +108,11 @@ class UserService implements UserServiceInterface
 
     public function deleteUser(int $id): bool
     {
+        $user = $this->userRepository->findById($id);
+        if ($user->isPrimaryAdmin()) {
+            throw new \Exception("Akun Super Admin Utama dilindungi sistem dan tidak dapat dihapus.");
+        }
+
         $deleted = $this->userRepository->delete($id);
         $this->clearCache($id);
         return $deleted;

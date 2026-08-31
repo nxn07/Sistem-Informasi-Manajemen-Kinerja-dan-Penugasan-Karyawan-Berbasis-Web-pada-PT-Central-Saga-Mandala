@@ -66,30 +66,53 @@ function saveLocalUser(user: User) {
 
 function getFallbackUsers(): User[] {
   return [
-    { id: 1, name: "Sarah Jenkins", email: "sarah@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 2, name: "Michael Ross", email: "michael@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit", "tasks.create"], created_at: "2026-08-19" },
-    { id: 3, name: "Natalie McDermott", email: "natalie@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 4, name: "Van Larkin", email: "van@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 5, name: "Miss Felicity Runte", email: "felicity@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], created_at: "2026-08-19" },
-    { id: 6, name: "Manager Utama", email: "manager@gmail.com", role: "MANAGER", roles: ["MANAGER"], status: "ACTIVE", permissions: ["tasks.create", "tasks.submit", "tasks.review"], created_at: "2026-08-19" },
-    { id: 7, name: "Admin System", email: "admin@gmail.com", role: "ADMIN", roles: ["ADMIN"], status: "ACTIVE", permissions: ["*"], created_at: "2026-08-19" },
-    { id: 8, name: "Manager Operasional", email: "manager2@gmail.com", role: "MANAGER", roles: ["MANAGER"], status: "ACTIVE", permissions: ["tasks.create", "tasks.submit", "tasks.review"], created_at: "2026-08-19" },
+    { id: 1, name: "Admin System", email: "admin@gmail.com", role: "ADMIN", roles: ["ADMIN"], status: "ACTIVE", permissions: ["*"], is_primary_admin: true, created_at: "2026-08-19" },
+    { id: 2, name: "admin edo", email: "adminEdo@gmail.com", role: "ADMIN", roles: ["ADMIN"], status: "ACTIVE", permissions: ["*"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 3, name: "Manager Utama", email: "manager@gmail.com", role: "MANAGER", roles: ["MANAGER"], status: "ACTIVE", permissions: ["tasks.create", "tasks.submit", "tasks.review"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 4, name: "Manager Operasional", email: "manager2@gmail.com", role: "MANAGER", roles: ["MANAGER"], status: "ACTIVE", permissions: ["tasks.create", "tasks.submit", "tasks.review"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 5, name: "Sarah Jenkins", email: "sarah@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 6, name: "Michael Ross", email: "michael@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit", "tasks.create"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 7, name: "Natalie McDermott", email: "natalie@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 8, name: "Van Larkin", email: "van@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 9, name: "Miss Felicity Runte", email: "felicity@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 10, name: "Bertrand", email: "bertrand@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 11, name: "Anna Lee", email: "anna@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], is_primary_admin: false, created_at: "2026-08-19" },
+    { id: 12, name: "David Tran", email: "david@gmail.com", role: "EMPLOYEE", roles: ["EMPLOYEE"], status: "ACTIVE", permissions: ["tasks.submit"], is_primary_admin: false, created_at: "2026-08-19" },
   ];
 }
 
+const fixedNameMap: Record<string, string> = {
+  "admin@gmail.com": "Admin System",
+  "adminedo@gmail.com": "admin edo",
+  "manager@gmail.com": "Manager Utama",
+  "manager2@gmail.com": "Manager Operasional",
+  "sarah@gmail.com": "Sarah Jenkins",
+  "michael@gmail.com": "Michael Ross",
+  "natalie@gmail.com": "Natalie McDermott",
+  "van@gmail.com": "Van Larkin",
+  "felicity@gmail.com": "Miss Felicity Runte",
+  "bertrand@gmail.com": "Bertrand",
+  "anna@gmail.com": "Anna Lee",
+  "david@gmail.com": "David Tran",
+};
+
+const fixedIdMap: Record<string, number> = {
+  "admin@gmail.com": 1,
+  "adminedo@gmail.com": 2,
+  "manager@gmail.com": 3,
+  "manager2@gmail.com": 4,
+  "sarah@gmail.com": 5,
+  "michael@gmail.com": 6,
+  "natalie@gmail.com": 7,
+  "van@gmail.com": 8,
+  "felicity@gmail.com": 9,
+  "bertrand@gmail.com": 10,
+  "anna@gmail.com": 11,
+  "david@gmail.com": 12,
+};
+
 function mergeUsers(serverUsers: User[], localUsers: User[]): User[] {
   const map = new Map<string, User>();
-  
-  const fixedIdMap: Record<string, number> = {
-    "sarah@gmail.com": 1,
-    "michael@gmail.com": 2,
-    "natalie@gmail.com": 3,
-    "van@gmail.com": 4,
-    "felicity@gmail.com": 5,
-    "manager@gmail.com": 6,
-    "admin@gmail.com": 7,
-    "manager2@gmail.com": 8,
-  };
 
   serverUsers.forEach((u) => {
     const key = (u.email || u.name || String(u.id)).toLowerCase().trim();
@@ -101,46 +124,80 @@ function mergeUsers(serverUsers: User[], localUsers: User[]): User[] {
     map.set(key, existing ? { ...existing, ...u } : u);
   });
 
-  return Array.from(map.values()).map((user) => {
-    const cleanEmail = user.email?.toLowerCase().trim() || "";
-    const fixedId = fixedIdMap[cleanEmail] || user.id;
-    const userRole = (user.role || user.roles?.[0] || "EMPLOYEE").toUpperCase();
+  return Array.from(map.values())
+    .map((user) => {
+      const cleanEmail = user.email?.toLowerCase().trim() || "";
+      const fixedId = fixedIdMap[cleanEmail] || user.id;
+      const isPrimary = user.is_primary_admin ?? (cleanEmail === "admin@gmail.com");
+      const userRole = isPrimary ? "ADMIN" : (user.role || user.roles?.[0] || "EMPLOYEE").toUpperCase();
+      const resolvedName = fixedNameMap[cleanEmail] || user.name;
 
-    let hasSavedPerms = false;
-    let perms = user.permissions;
-    let userStatus: "ACTIVE" | "INACTIVE" = user.status || "ACTIVE";
+      let hasSavedPerms = false;
+      let perms = user.permissions;
+      let userStatus: "ACTIVE" | "INACTIVE" = user.status || "ACTIVE";
 
-    if (typeof window !== "undefined" && cleanEmail) {
-      const savedByEmail = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
-      if (savedByEmail !== null) {
-        try {
-          perms = JSON.parse(savedByEmail);
-          hasSavedPerms = true;
-        } catch {
-          // ignore
+      if (typeof window !== "undefined" && cleanEmail) {
+        const savedByEmail = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
+        if (savedByEmail !== null) {
+          try {
+            perms = JSON.parse(savedByEmail);
+            hasSavedPerms = true;
+          } catch {
+            // ignore
+          }
+        }
+        const savedStatus = localStorage.getItem(`simkap_user_status_${cleanEmail}`);
+        if (savedStatus) {
+          userStatus = savedStatus as "ACTIVE" | "INACTIVE";
         }
       }
-      const savedStatus = localStorage.getItem(`simkap_user_status_${cleanEmail}`);
-      if (savedStatus) {
-        userStatus = savedStatus as "ACTIVE" | "INACTIVE";
+
+      if (userRole === "EMPLOYEE" && perms) {
+        perms = perms.filter((p: string) => ["tasks.create", "tasks.submit", "tasks.review"].includes(p));
+      } else if (userRole === "MANAGER" && perms) {
+        perms = perms.filter((p: string) => ["tasks.create", "tasks.submit", "tasks.review", "evaluations.create", "users.delete"].includes(p));
       }
-    }
 
-    if (userRole === "EMPLOYEE" && perms) {
-      perms = perms.filter((p: string) => ["tasks.create", "tasks.submit", "tasks.review"].includes(p));
-    } else if (userRole === "MANAGER" && perms) {
-      perms = perms.filter((p: string) => ["tasks.create", "tasks.submit", "tasks.review", "evaluations.create", "users.delete"].includes(p));
-    }
+      return {
+        ...user,
+        id: fixedId,
+        name: resolvedName,
+        role: userRole,
+        roles: [userRole],
+        status: isPrimary ? "ACTIVE" : userStatus,
+        is_primary_admin: isPrimary,
+        permissions: isPrimary
+          ? ["*"]
+          : hasSavedPerms
+          ? (perms || [])
+          : (perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"])),
+      };
+    })
+    .sort((a, b) => {
+      const getRank = (u: User) => {
+        if (u.is_primary_admin || u.email?.toLowerCase().trim() === "admin@gmail.com") return 1;
+        const r = (u.role || u.roles?.[0] || "EMPLOYEE").toUpperCase();
+        if (r === "ADMIN") return 2;
+        if (r === "MANAGER") return 3;
+        return 4; // EMPLOYEE
+      };
 
-    return {
-      ...user,
-      id: fixedId,
-      role: userRole,
-      roles: [userRole],
-      status: userStatus,
-      permissions: hasSavedPerms ? (perms || []) : (perms && perms.length > 0 ? perms : (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"])),
-    };
-  });
+      const rankA = getRank(a);
+      const rankB = getRank(b);
+
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+
+      // Prioritaskan akun aktif jika level jabatan sama
+      const statusA = a.status === "INACTIVE" ? 1 : 0;
+      const statusB = b.status === "INACTIVE" ? 1 : 0;
+      if (statusA !== statusB) {
+        return statusA - statusB;
+      }
+
+      return a.id - b.id;
+    });
 }
 
 export const userService = {
@@ -221,6 +278,10 @@ export const userService = {
     const all = await this.getAll();
     const existing = all.find((u) => u.id === id);
     if (!existing) throw new Error("User tidak ditemukan");
+
+    if (existing.is_primary_admin || existing.email?.toLowerCase().trim() === "admin@gmail.com") {
+      throw new Error("Akun Super Admin Utama dilindungi sistem dan tidak dapat dinonaktifkan!");
+    }
 
     const currentStatus = existing.status || "ACTIVE";
     const nextStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";

@@ -17,28 +17,15 @@ export interface AuthResponseData {
 
 export const authService = {
   async login(payload: LoginPayload): Promise<AuthResponseData> {
+    const cleanEmail = (payload.email || "").trim().toLowerCase();
+    const cleanPassword = (payload.password || "").trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      throw new Error("Gagal Masuk: Email dan password wajib diisi!");
+    }
+
     try {
-      const response = await apiClient.post<ApiResponse<AuthResponseData>>('/auth/login', payload);
-      const { token, user } = response.data.data;
-      
-      Cookies.set('simkap_token', token, { expires: 7, secure: process.env.NODE_ENV === 'production' });
-      Cookies.set('simkap_user', JSON.stringify(user), { expires: 7 });
-      
-      return { token, user };
-    } catch {
-      const cleanEmail = (payload.email || "").trim().toLowerCase();
-      const cleanPassword = (payload.password || "").trim();
-
-      // Check if user has set a custom password via reset-password page
-      let expectedPassword = "password";
-      if (typeof window !== "undefined") {
-        const customPass = localStorage.getItem(`simkap_custom_password_${cleanEmail}`);
-        if (customPass) {
-          expectedPassword = customPass;
-        }
-      }
-
-      // Check if user status is INACTIVE
+      // 1. Pre-check status from local storage
       if (typeof window !== "undefined") {
         const savedStatus = localStorage.getItem(`simkap_user_status_${cleanEmail}`);
         if (savedStatus === "INACTIVE") {
@@ -46,135 +33,136 @@ export const authService = {
         }
       }
 
-      // Strict credential check per role
-      if (cleanPassword !== expectedPassword) {
-        throw new Error("Gagal Masuk: Kombinasi email atau password salah (401 Unauthorized).");
-      }
-
-      if (cleanEmail === "admin@gmail.com") {
-        const mockUser: User = {
-          id: 1,
-          name: "Admin System",
-          email: "admin@gmail.com",
-          role: "ADMIN",
-          roles: ["ADMIN"],
-          permissions: ["*"],
-          created_at: "2026-08-19",
-        };
-        const mockToken = `demo_token_ADMIN_${Date.now()}`;
-        Cookies.set('simkap_token', mockToken, { expires: 7 });
-        Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
-        auditLogService.logActivity(mockUser.name, "USER_LOGIN", "App\\Models\\User", `Pengguna '${mockUser.name}' (${mockUser.role}) berhasil masuk ke sistem`);
-        return { token: mockToken, user: mockUser };
-      }
-
-      if (cleanEmail === "manager@gmail.com") {
-        const mockUser: User = {
-          id: 2,
-          name: "Manager Utama",
-          email: "manager@gmail.com",
-          role: "MANAGER",
-          roles: ["MANAGER"],
-          permissions: ["tasks.create", "tasks.review", "evaluations.create"],
-          created_at: "2026-08-19",
-        };
-        const mockToken = `demo_token_MANAGER_${Date.now()}`;
-        Cookies.set('simkap_token', mockToken, { expires: 7 });
-        Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
-        return { token: mockToken, user: mockUser };
-      }
-
-      if (cleanEmail === "employee@gmail.com" || cleanEmail === "sarah@gmail.com") {
-        // Read custom saved permissions from localStorage if updated by Admin in /users
-        let savedPerms = ["tasks.submit", "tasks.create", "evaluations.view_own"];
-        if (typeof window !== "undefined") {
-          try {
-            const raw = localStorage.getItem("simkap_user_perm_3");
-            if (raw) savedPerms = JSON.parse(raw);
-          } catch {
-            // ignore
-          }
+      // 2. Try real backend API
+      const response = await apiClient.post<ApiResponse<AuthResponseData>>('/auth/login', payload);
+      const { token, user } = response.data.data;
+      
+      let isInactive = user.status === "INACTIVE";
+      if (typeof window !== "undefined") {
+        const savedStatus = localStorage.getItem(`simkap_user_status_${cleanEmail}`);
+        if (savedStatus === "INACTIVE") {
+          isInactive = true;
         }
-
-        const mockUser: User = {
-          id: 3,
-          name: "Sarah Jenkins",
-          email: "sarah@gmail.com",
-          role: "EMPLOYEE",
-          roles: ["EMPLOYEE"],
-          permissions: savedPerms,
-          created_at: "2026-08-19",
-        };
-        const mockToken = `demo_token_EMPLOYEE_${Date.now()}`;
-        Cookies.set('simkap_token', mockToken, { expires: 7 });
-        Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
-        return { token: mockToken, user: mockUser };
+      }
+      if (isInactive) {
+        throw new Error("Akun Anda telah dinonaktifkan oleh Administrator. Akses login ditolak.");
       }
 
-      // Check dynamically registered or fallback users from userService
+      Cookies.set('simkap_token', token, { expires: 7, secure: process.env.NODE_ENV === 'production', path: '/' });
+      Cookies.set('simkap_user', JSON.stringify(user), { expires: 7, path: '/' });
+      
+      return { token, user };
+    } catch (err: any) {
+      // If error is account inactive, rethrow
+      if (err.message && err.message.includes("Akun Anda telah dinonaktifkan")) {
+        throw err;
+      }
+      if (err.response?.status === 403) {
+        throw new Error(err.response?.data?.message || "Akun Anda telah dinonaktifkan oleh Administrator. Akses login ditolak.");
+      }
+
+      // If real backend responded with 401 or 422 (unauthorized / wrong credentials), throw exact error
+      if (err.response && (err.response.status === 401 || err.response.status === 422)) {
+        throw new Error("Gagal Masuk: Email atau password yang Anda masukkan salah (401 Unauthorized). Silakan periksa kembali.");
+      }
+
+      // === LOCAL / FALLBACK AUTHENTICATION WITH STRICT VALIDATION ===
+      
+      // Step A: Check if the user exists in known user database
+      let allRegisteredUsers: User[] = [];
       try {
-        const allUsers = await userService.getAll();
-        const found = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-        if (found) {
-          const userRole = (found.role || found.roles?.[0] || "EMPLOYEE").toUpperCase();
-          const mockToken = `demo_token_${userRole}_${Date.now()}`;
-          
-          let savedPerms = found.permissions;
-          if (typeof window !== "undefined" && cleanEmail) {
-            try {
-              const rawByEmail = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
-              if (rawByEmail) savedPerms = JSON.parse(rawByEmail);
-            } catch {
-              // ignore
-            }
-          }
-
-          const mockUser: User = {
-            ...found,
-            role: userRole,
-            roles: [userRole],
-            permissions: savedPerms || (userRole === "ADMIN" ? ["*"] : userRole === "MANAGER" ? ["tasks.create", "tasks.review"] : ["tasks.submit"]),
-          };
-          Cookies.set('simkap_token', mockToken, { expires: 7 });
-          Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
-          if (typeof window !== "undefined") {
-            localStorage.setItem('simkap_user', JSON.stringify(mockUser));
-          }
-          return { token: mockToken, user: mockUser };
-        }
+        allRegisteredUsers = await userService.getAll();
       } catch {
-        // ignore
+        allRegisteredUsers = [];
       }
 
-      // Fallback default admin / manager 1 / manager 2 / sarah
-      const isManager2 = cleanEmail.includes("manager2");
-      const isManager1 = cleanEmail.includes("manager") && !isManager2;
-      const mockRole = cleanEmail.includes("admin") ? "ADMIN" : (isManager1 || isManager2) ? "MANAGER" : "EMPLOYEE";
-      const mockToken = `demo_token_${mockRole}_${Date.now()}`;
-      let defaultPerms = mockRole === "ADMIN" ? ["*"] : mockRole === "MANAGER" ? ["tasks.create", "tasks.submit", "tasks.review"] : ["tasks.submit"];
-      if (typeof window !== "undefined" && cleanEmail) {
+      // Normalize email alias mappings
+      let lookupEmail = cleanEmail;
+      if (cleanEmail === "manager1@gmail.com") {
+        lookupEmail = "manager@gmail.com";
+      } else if (cleanEmail === "employee@gmail.com") {
+        lookupEmail = "sarah@gmail.com";
+      }
+
+      const matchedUser = allRegisteredUsers.find(
+        (u) => u.email.toLowerCase().trim() === lookupEmail || u.email.toLowerCase().trim() === cleanEmail
+      );
+
+      // If user is not found in registered database, REJECT WITH ERROR
+      if (!matchedUser) {
+        throw new Error(`Gagal Masuk: Email '${payload.email}' tidak terdaftar di sistem. Silakan periksa kembali email Anda.`);
+      }
+
+      // Step B: Check account status
+      let userStatus: "ACTIVE" | "INACTIVE" = (matchedUser.status as "ACTIVE" | "INACTIVE") || "ACTIVE";
+      if (typeof window !== "undefined") {
+        const savedStatus =
+          localStorage.getItem(`simkap_user_status_${cleanEmail}`) ||
+          localStorage.getItem(`simkap_user_status_${lookupEmail}`);
+        if (savedStatus) userStatus = savedStatus as "ACTIVE" | "INACTIVE";
+      }
+      if (userStatus === "INACTIVE") {
+        throw new Error("Akun Anda telah dinonaktifkan oleh Administrator. Akses login ditolak.");
+      }
+
+      // Step C: Check password
+      let expectedPassword = "password";
+      if (typeof window !== "undefined") {
+        const customPass =
+          localStorage.getItem(`simkap_custom_password_${cleanEmail}`) ||
+          localStorage.getItem(`simkap_custom_password_${lookupEmail}`);
+        if (customPass) {
+          expectedPassword = customPass;
+        }
+      }
+
+      if (cleanPassword !== expectedPassword) {
+        throw new Error("Gagal Masuk: Password yang Anda masukkan salah. Silakan periksa kembali.");
+      }
+
+      // Step D: Successfully authenticate user
+      const userRole = (matchedUser.role || matchedUser.roles?.[0] || "EMPLOYEE").toUpperCase();
+      let userPerms = matchedUser.permissions;
+      if (typeof window !== "undefined") {
         try {
-          const raw = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
-          if (raw) defaultPerms = JSON.parse(raw);
+          const rawPerms =
+            localStorage.getItem(`simkap_user_perm_${cleanEmail}`) ||
+            localStorage.getItem(`simkap_user_perm_${lookupEmail}`);
+          if (rawPerms) userPerms = JSON.parse(rawPerms);
         } catch {
           // ignore
         }
       }
-      const mockUser: User = {
-        id: cleanEmail.includes("admin") ? 7 : isManager2 ? 8 : isManager1 ? 6 : 1,
-        name: cleanEmail.includes("admin") ? "Admin System" : isManager2 ? "Manager Operasional" : isManager1 ? "Manager Utama" : "Sarah Jenkins",
-        email: cleanEmail,
-        role: mockRole,
-        roles: [mockRole],
-        permissions: defaultPerms,
-        created_at: "2026-08-19",
+
+      const finalUser: User = {
+        ...matchedUser,
+        role: userRole,
+        roles: [userRole],
+        permissions:
+          userPerms && userPerms.length > 0
+            ? userPerms
+            : userRole === "ADMIN"
+            ? ["*"]
+            : userRole === "MANAGER"
+            ? ["tasks.create", "tasks.submit", "tasks.review", "evaluations.create"]
+            : ["tasks.submit"],
       };
-      Cookies.set('simkap_token', mockToken, { expires: 7 });
-      Cookies.set('simkap_user', JSON.stringify(mockUser), { expires: 7 });
+
+      const mockToken = `demo_token_${userRole}_${Date.now()}`;
+      Cookies.set('simkap_token', mockToken, { expires: 7, path: '/' });
+      Cookies.set('simkap_user', JSON.stringify(finalUser), { expires: 7, path: '/' });
       if (typeof window !== "undefined") {
-        localStorage.setItem('simkap_user', JSON.stringify(mockUser));
+        localStorage.setItem('simkap_user', JSON.stringify(finalUser));
       }
-      return { token: mockToken, user: mockUser };
+
+      auditLogService.logActivity(
+        finalUser.name,
+        "USER_LOGIN",
+        "App\\Models\\User",
+        `Pengguna '${finalUser.name}' (${finalUser.role}) berhasil masuk ke sistem`
+      );
+
+      return { token: mockToken, user: finalUser };
     }
   },
 
@@ -184,8 +172,8 @@ export const authService = {
     } catch {
       // Ignore if session is already expired
     } finally {
-      Cookies.remove('simkap_token');
-      Cookies.remove('simkap_user');
+      Cookies.remove('simkap_token', { path: '/' });
+      Cookies.remove('simkap_user', { path: '/' });
       if (typeof window !== "undefined") {
         localStorage.removeItem('simkap_user');
       }
@@ -193,41 +181,75 @@ export const authService = {
     }
   },
 
-  async getMe(): Promise<User> {
-    const token = Cookies.get('simkap_token');
-    const cachedUser = this.getCurrentUser();
+  async getMe(): Promise<User | null> {
+    try {
+      const response = await apiClient.get<ApiResponse<User>>('/auth/me');
+      const user = response.data.data;
+      if (user) {
+        Cookies.set('simkap_user', JSON.stringify(user), { expires: 7 });
+        return user;
+      }
+    } catch {
+      // ignore
+    }
+    return authService.getCurrentUser();
+  },
 
-    if (cachedUser) {
-      if (typeof window !== "undefined" && cachedUser.email) {
+  getCurrentUser(): User | null {
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem("simkap_user");
+      if (raw) {
         try {
-          const cleanEmail = cachedUser.email.toLowerCase().trim();
-          const rawPerms = localStorage.getItem(`simkap_user_perm_${cleanEmail}`);
-          if (rawPerms) {
-            cachedUser.permissions = JSON.parse(rawPerms);
+          const parsed = JSON.parse(raw);
+          const cleanEmail = parsed.email?.toLowerCase().trim();
+          const savedPerms = cleanEmail ? localStorage.getItem(`simkap_user_perm_${cleanEmail}`) : null;
+          const savedRole = cleanEmail ? localStorage.getItem(`simkap_user_role_${cleanEmail}`) : null;
+
+          const currentRole = savedRole || parsed.role || parsed.roles?.[0] || "EMPLOYEE";
+          let permissions = parsed.permissions || ["tasks.submit"];
+          if (savedPerms) {
+            try {
+              permissions = JSON.parse(savedPerms);
+            } catch {
+              // ignore
+            }
           }
+
+          return {
+            ...parsed,
+            role: currentRole,
+            roles: [currentRole],
+            permissions,
+          };
         } catch {
           // ignore
         }
       }
-      return cachedUser;
     }
-
-    try {
-      const response = await apiClient.get<ApiResponse<User>>('/auth/me');
-      const user = response.data.data;
-      Cookies.set('simkap_user', JSON.stringify(user), { expires: 7 });
-      return user;
-    } catch {
-      if (cachedUser) return cachedUser;
-      throw new Error('Unauthenticated');
-    }
-  },
-
-  getCurrentUser(): User | null {
     const userCookie = Cookies.get('simkap_user');
     if (!userCookie) return null;
     try {
-      return JSON.parse(userCookie) as User;
+      const parsed = JSON.parse(userCookie);
+      const cleanEmail = parsed.email?.toLowerCase().trim();
+      const savedPerms = cleanEmail ? localStorage.getItem(`simkap_user_perm_${cleanEmail}`) : null;
+      const savedRole = cleanEmail ? localStorage.getItem(`simkap_user_role_${cleanEmail}`) : null;
+
+      const currentRole = savedRole || parsed.role || parsed.roles?.[0] || "EMPLOYEE";
+      let permissions = parsed.permissions || ["tasks.submit"];
+      if (savedPerms) {
+        try {
+          permissions = JSON.parse(savedPerms);
+        } catch {
+          // ignore
+        }
+      }
+
+      return {
+        ...parsed,
+        role: currentRole,
+        roles: [currentRole],
+        permissions,
+      };
     } catch {
       return null;
     }
@@ -235,5 +257,5 @@ export const authService = {
 
   isAuthenticated(): boolean {
     return !!Cookies.get('simkap_token');
-  }
+  },
 };

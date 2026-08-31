@@ -33,6 +33,10 @@ import {
   Edit3,
   Sparkles,
   X,
+  ArrowRightLeft,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Task } from "@/types/api";
 
@@ -73,10 +77,11 @@ export default function TasksPage() {
   // View Mode: 'table' or 'grid'
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
-  // Search & Filter state
+  // Search, Filter & Sort state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [employeeFilter, setEmployeeFilter] = useState<"MY_TASKS" | "ALL_TASKS">("ALL_TASKS");
+  const [sortOrder, setSortOrder] = useState<"UPDATED_DESC" | "UPDATED_ASC">("UPDATED_DESC");
 
   // Toast Notification States
   const [toast, setToast] = useState<{
@@ -112,6 +117,14 @@ export default function TasksPage() {
     if (!reassignTaskTarget || !selectedNewAssignee) return;
     try {
       const targetAssigneeUser = activeUsers.find((u) => u.name === selectedNewAssignee);
+      const nowFormatted = new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }) + " WIB";
+      const previousOwner = reassignTaskTarget.assignedTo || reassignTaskTarget.employee?.full_name || reassignTaskTarget.employee?.name || "Pegawai Sebelumnya";
 
       const updatedTask: Task = {
         ...reassignTaskTarget,
@@ -128,6 +141,10 @@ export default function TasksPage() {
         },
         status: "IN_PROGRESS",
         needs_reassignment: false,
+        reassigned_by: user?.name || "Manager",
+        reassigned_at: nowFormatted,
+        previous_assignee: previousOwner,
+        updated_at: nowFormatted,
       };
 
       if (typeof window !== "undefined") {
@@ -210,8 +227,34 @@ export default function TasksPage() {
   const activeTasks = useMemo(() => tasks.filter((t) => !t.is_deleted), [tasks]);
   const trashedTasks = useMemo(() => tasks.filter((t) => t.is_deleted), [tasks]);
 
+  const parseTaskDate = (dateVal?: string | null): number => {
+    if (!dateVal) return 0;
+    const directTime = new Date(dateVal).getTime();
+    if (!isNaN(directTime)) return directTime;
+
+    const monthMap: Record<string, string> = {
+      jan: "01", peb: "02", feb: "02", mar: "03", apr: "04", mei: "05", may: "05",
+      jun: "06", jul: "07", ags: "08", aug: "08", sep: "09", okt: "10", oct: "10",
+      nop: "11", nov: "11", des: "12", dec: "12"
+    };
+
+    const clean = dateVal.replace("WIB", "").trim();
+    const parts = clean.split(/[\s,]+/);
+    if (parts.length >= 3) {
+      const day = parts[0].padStart(2, "0");
+      const monthStr = parts[1].toLowerCase().slice(0, 3);
+      const month = monthMap[monthStr] || "01";
+      const year = parts[2];
+      const time = parts[3] || "00:00";
+      const isoStr = `${year}-${month}-${day}T${time}:00`;
+      const parsed = new Date(isoStr).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
   const filteredTasks = useMemo(() => {
-    return activeTasks.filter((task) => {
+    const list = activeTasks.filter((task) => {
       const empName = (task.employee?.full_name || task.employee?.name || "").toLowerCase().trim();
       const loggedUserName = (user?.full_name || user?.name || "Sarah Jenkins").toLowerCase().trim();
       
@@ -245,7 +288,21 @@ export default function TasksPage() {
 
       return matchesEmployeeFilter && matchesSearch && matchesStatus;
     });
-  }, [activeTasks, searchQuery, selectedStatus, isEmployee, employeeFilter, user]);
+
+    return [...list].sort((a, b) => {
+      if (sortOrder === "UPDATED_DESC") {
+        // Waktu diubah paling baru ke paling lama
+        const timeA = parseTaskDate(a.reassigned_at ?? a.updated_at ?? a.submitted_at ?? a.due_date) || 0;
+        const timeB = parseTaskDate(b.reassigned_at ?? b.updated_at ?? b.submitted_at ?? b.due_date) || 0;
+        return timeB - timeA;
+      } else {
+        // UPDATED_ASC: Waktu diubah paling lama ke paling baru
+        const timeA = parseTaskDate(a.reassigned_at ?? a.updated_at ?? a.submitted_at ?? a.due_date) || 9999999999999;
+        const timeB = parseTaskDate(b.reassigned_at ?? b.updated_at ?? b.submitted_at ?? b.due_date) || 9999999999999;
+        return timeA - timeB;
+      }
+    });
+  }, [activeTasks, searchQuery, selectedStatus, isEmployee, employeeFilter, user, sortOrder]);
 
   // Helper Badge Renderers
   const getStatusBadge = (status: Task["status"]): React.ReactNode => {
@@ -638,8 +695,8 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Toolbar Search & Status Filter (Sleek Single-Frame Floating Toolbar) */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/90 shadow-2xs">
+      {/* Toolbar Search, Sort & Status Filter (Sleek Single-Frame Floating Toolbar) */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/90 shadow-2xs">
         <div className="relative flex-1 w-full max-w-md">
           <Search className="w-4 h-4 text-blue-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -651,15 +708,16 @@ export default function TasksPage() {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-blue-600 shrink-0" />
+        <div className="flex flex-wrap items-center gap-2.5 justify-start lg:justify-end">
+          {/* Filter Status */}
+          <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
+            <Filter className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-3.5 py-2.5 text-xs font-extrabold border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white text-slate-800 cursor-pointer shadow-2xs transition-all"
+              className="text-xs font-extrabold border-0 bg-transparent text-slate-800 cursor-pointer focus:outline-none"
             >
-              <option value="ALL">Semua Status (All Statuses)</option>
+              <option value="ALL">Semua Status (All)</option>
               <option value="PENDING">PENDING</option>
               <option value="IN_PROGRESS">IN_PROGRESS</option>
               <option value="SUBMITTED">SUBMITTED</option>
@@ -668,7 +726,20 @@ export default function TasksPage() {
             </select>
           </div>
 
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-900 text-white rounded-xl text-xs font-black shadow-xs shrink-0">
+          {/* Opsi Urutkan Waktu Diubah (Paling Baru & Paling Lama) */}
+          <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
+            <ArrowUpDown className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              className="text-xs font-extrabold border-0 bg-transparent text-slate-800 cursor-pointer focus:outline-none"
+            >
+              <option value="UPDATED_DESC">🕒 Waktu Diubah: Paling Baru</option>
+              <option value="UPDATED_ASC">🕒 Waktu Diubah: Paling Lama</option>
+            </select>
+          </div>
+
+          <span className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-900 text-white rounded-xl text-xs font-black shadow-xs shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-blue-300" />
             Total {filteredTasks.length} Tasks
           </span>
@@ -710,7 +781,22 @@ export default function TasksPage() {
                   <th className="py-4 px-4 min-w-[160px] border-r border-white/20">EMPLOYEE</th>
                   <th className="py-4 px-4 min-w-[120px] border-r border-white/20">DUE DATE</th>
                   <th className="py-4 px-4 min-w-[110px] border-r border-white/20">PRIORITY</th>
-                  <th className="py-4 px-4 min-w-[170px] border-r border-white/20">STATUS & WAKTU DIUBAH</th>
+                  <th
+                    onClick={() => setSortOrder(sortOrder === "UPDATED_DESC" ? "UPDATED_ASC" : "UPDATED_DESC")}
+                    className="py-4 px-4 min-w-[190px] border-r border-white/20 cursor-pointer hover:bg-white/10 transition-colors select-none group"
+                    title="Klik untuk mengubah urutan waktu update / perubahan status"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span>STATUS & WAKTU DIUBAH</span>
+                      <span className="p-1 rounded bg-white/10 group-hover:bg-white/20">
+                        {sortOrder === "UPDATED_DESC" ? (
+                          <ArrowDown className="w-3.5 h-3.5 text-amber-400" />
+                        ) : (
+                          <ArrowUp className="w-3.5 h-3.5 text-amber-400" />
+                        )}
+                      </span>
+                    </div>
+                  </th>
                   <th className="py-4 px-4 text-center min-w-[200px]">ACTIONS & BERKAS</th>
                 </tr>
               </thead>
@@ -773,14 +859,25 @@ export default function TasksPage() {
                         {getPriorityBadge(task.weight ?? task.weight_score ?? 5)}
                       </td>
                       
-                      {/* STATUS + TERAKHIR DIUBAH + JENIS DOKUMEN */}
+                      {/* STATUS + TERAKHIR DIUBAH + INFORMASI DIPINDAHKAN + JENIS DOKUMEN */}
                       <td className="py-4 px-4 border-r border-slate-300">
                         <div className="space-y-1">
                           <div>{getStatusBadge(task.status)}</div>
                           <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
                             <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>Diubah: {lastModified}</span>
+                            <span>Diubah: {task.reassigned_at || task.updated_at || lastModified}</span>
                           </div>
+                          {task.reassigned_by && (
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] font-black rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200 shadow-2xs">
+                              <ArrowRightLeft className="w-3 h-3 text-indigo-600 shrink-0" />
+                              <span>Dipindahkan: <strong>{task.reassigned_by}</strong></span>
+                            </div>
+                          )}
+                          {task.previous_assignee && (
+                            <p className="text-[9px] text-slate-400 font-semibold italic">
+                              (Dari: {task.previous_assignee})
+                            </p>
+                          )}
                           {(task.submission_file || task.submission_link || task.status === "SUBMITTED") && (
                             <button
                               onClick={() => setSelectedDetailTask(task)}

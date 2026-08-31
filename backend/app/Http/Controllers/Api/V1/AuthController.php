@@ -26,6 +26,13 @@ class AuthController extends Controller
             ], 401);
         }
 
+        if (isset($user->status) && strtoupper($user->status) === 'INACTIVE') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun Anda telah dinonaktifkan oleh Administrator. Akses login ditolak.',
+            ], 403);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

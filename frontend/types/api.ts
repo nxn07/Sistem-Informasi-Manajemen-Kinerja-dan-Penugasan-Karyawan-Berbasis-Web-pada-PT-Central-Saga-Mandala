@@ -20,6 +20,7 @@ export interface User {
   permissions: string[];
   employee_id?: number;
   status?: "ACTIVE" | "INACTIVE";
+  is_primary_admin?: boolean;
   created_at: string;
 }
 
@@ -97,6 +98,9 @@ export interface Task {
   submission_notes?: string | null;
   submitted_at?: string | null;
   updated_at?: string | null;
+  reassigned_by?: string | null;
+  reassigned_at?: string | null;
+  previous_assignee?: string | null;
   doc_type?: string | null;
   is_deleted?: boolean;
   deleted_at?: string | null;

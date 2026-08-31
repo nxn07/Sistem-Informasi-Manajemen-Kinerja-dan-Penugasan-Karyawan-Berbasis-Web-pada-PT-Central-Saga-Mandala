@@ -19,6 +19,7 @@ import {
   X,
   Download,
   Edit3,
+  ArrowRightLeft,
 } from "lucide-react";
 
 interface TaskDetailModalProps {
@@ -166,10 +167,33 @@ export function TaskDetailModal({ isOpen, onClose, task, onEditDocument }: TaskD
               </p>
               <p className="text-[11px] text-slate-400 flex items-center gap-1">
                 <Clock className="w-3 h-3 text-slate-400" />
-                Diubah: {lastModified}
+                Diubah: {task.reassigned_at || task.updated_at || lastModified}
               </p>
             </div>
           </div>
+
+          {/* Reassignment Tracking Banner if transferred */}
+          {task.reassigned_by && (
+            <div className="p-3.5 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl border border-indigo-200">
+                  <ArrowRightLeft className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-extrabold text-indigo-950">
+                    Tugas ini dialihkan oleh: <strong>{task.reassigned_by}</strong>
+                  </p>
+                  <p className="text-[11px] text-indigo-700 font-medium">
+                    {task.previous_assignee ? `Pemilik tugas sebelumnya: ${task.previous_assignee} • ` : ""}
+                    Waktu: {task.reassigned_at || task.updated_at}
+                  </p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 text-[10px] font-black rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300 shrink-0">
+                DIALIHKAN
+              </span>
+            </div>
+          )}
 
           {/* Document & Submission Box */}
           {(task.submission_file || task.submission_link || task.status === "SUBMITTED" || task.status === "APPROVED" || task.status === "REVISION") ? (

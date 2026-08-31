@@ -47,4 +47,10 @@ class User extends Authenticatable
     {
         return $this->hasOne(Employee::class);
     }
+
+    public function isPrimaryAdmin(): bool
+    {
+        $primaryEmails = ['admin@gmail.com'];
+        return in_array(strtolower(trim($this->email)), $primaryEmails, true);
+    }
 }
