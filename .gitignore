@@ -1,0 +1,21 @@
+# Kredensial & konfigurasi lokal
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+KREDENSIAL*.md
+credentials*.json
+
+# Dependensi & hasil build
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+.vscode/
+compose.yaml.bak
+
+# Berkas sampah
+*.log
+.DS_Store
+Thumbs.db
